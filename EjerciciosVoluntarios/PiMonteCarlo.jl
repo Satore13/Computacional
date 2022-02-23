@@ -2,32 +2,25 @@ using Random
 
 
 function generateCoord()
-    x = (rand() - 0.5)
-    y = (rand() - 0.5)
+    x = (rand())
+    y = (rand())
 
     return (x,y)
 end
 
 function checkIfInCircle((x, y))
-    return x^2 + y^2 <=  0.25
+    return x^2 + y^2 <=  1
 end
 
 begin
-    iterations = 1000
+    N = 1000
     local inside::BigInt = 0
-    local outside::BigInt = 0
-    for i in 1:iterations
+    for i in 1:N
         v = generateCoord()
         if(checkIfInCircle(v))
             inside += 1
-        else
-            outside += 1
-        end 
-        if ((i*100) ÷ iterations) % 10  == 0
-            println((i*100) ÷ iterations)
         end
     end
     
-    print("π ≈ ", 4*inside/(inside + outside))
-    png(plt, "pipi") 
+    println("π ≈ ", 4*inside/(N))
 end
