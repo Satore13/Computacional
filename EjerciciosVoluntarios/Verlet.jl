@@ -1,5 +1,6 @@
 module Verlet
     using DataFrames
+    #Estructura que almacena toda la información necesaria de una partícula
     struct Particle
         x::Vector{Float64}
         v::Vector{Float64}
@@ -7,9 +8,9 @@ module Verlet
         mass::Float64
         Particle(x, v, mass) = new(x, v,  zeros(Real, length(x)) ,mass)
         Particle(x, v, a, mass) = new(x, v, a, mass)
-
     end
 
+    #Microestado del sistema en un tiempo t
     struct Frame
         t::Float64
         particles::Vector{Particle}
@@ -60,4 +61,8 @@ module Verlet
     function stepFrame(frame::Frame, step::Float64, acceleration::Function)::Frame
         stepFrame(frame, step, acceleration, (x) -> x)
     end
+
+    #Funciones mecánicas adicionales
+    calculateMomentum(p::Particle)::Vector{Float64} = p.v * p.mass
+    calculateMomentum(f::Frame)::Vector{Float64} = sum(calculateMomentum, f.particles)
 end
