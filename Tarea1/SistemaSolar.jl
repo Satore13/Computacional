@@ -47,7 +47,7 @@ end
 # Parametros de la simulacion
 begin
     FPS = 10
-    length_of_sim = 10
+    length_of_sim = 100 # x58.1 días aprox.
     step = 0.0001
 end
 global PlanetsIndex = DataStructures.OrderedDict{Symbol, Int64}(:Mercurio => 1, :Venus=> 2, :Tierra => 3, :Marte => 4, :Jupiter => 5, :Saturno => 6, :Urano => 7, :Neptuno => 8)
@@ -112,7 +112,6 @@ function buildAnimation()
     last_percentage = 0.0
     for (line_n, row) in enumerate(eachrow(df))
         frame_plot = plot()
-        frame_plot_zoom = plot()
         current_percentage = (line_n/size(df)[1]*100)
         if current_percentage - last_percentage > 1
             print("Progreso: ", round(current_percentage, digits = 2), "%\r")
@@ -120,17 +119,16 @@ function buildAnimation()
         end
         #Dibujar todos los planetas
         for (plabel, index) in PlanetsIndex
-            scatter!(frame_plot, [row["p"*string(index)*"x1"]], [row["p"*string(index)*"x2"]], label=nothing)
-            scatter!(frame_plot_zoom, [row["p"*string(index)*"x1"]], [row["p"*string(index)*"x2"]], label=string(plabel))
+            scatter!(frame_plot, [row["p"*string(index)*"x1"]], [row["p"*string(index)*"x2"]], label=string(plabel))
         end
         xlabel!(frame_plot, "t = "*string(round(row.time*58.1, digits = 2))*" días")
-        xlabel!(frame_plot_zoom, "t = "*string(round(row.time*58.1, digits = 2))*" días")
 
         #Dibujar el sol
-        scatter!(frame_plot, [0.0], [0.0], label=nothing,  xlims=(-50, 50), ylim = (-50, 50), aspect_ratio = :equal, legend = :outertopright)
-        scatter!(frame_plot_zoom, [0.0], [0.0], label="Sol",  xlims=width, ylim = height, aspect_ratio = :equal, legend = :outertopright)
-
-        frame(animation, plot(frame_plot, frame_plot_zoom, layout = l))
+        scatter!(frame_plot, [0.0], [0.0], label="Sol",  xlims=(-50, 50), ylim = (-50, 50), aspect_ratio = :equal, legend = :outertopright)
+        
+        #Dibujar zona ampliada
+        lens!(frame_plot, [-2.5, 2.5], [-2.5, 2.5], inset = (1, bbox(0.4,0.6,0.3,0.3)), aspect_ratio = :equal)
+        frame(animation, frame_plot)
     end
     gif(animation, "Tarea1/SistemaSolar.gif",fps = FPS)
 end
