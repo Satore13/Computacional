@@ -1,7 +1,7 @@
 include("Verlet.jl")
 Particle, Frame = Verlet.Particle, Verlet.Frame
 import Base.string
-using CSV, Plots, DataFrames
+using CSV, CairoMakie, DataFrames
 using DataStructures
 
 #=
@@ -107,30 +107,5 @@ begin
 end
 function buildAnimation()
     df = DataFrame(CSV.File("Tarea1/SistemaSolar.out"))
-    l = @layout [a b]
-    animation = Animation()
-    last_percentage = 0.0
-    for (line_n, row) in enumerate(eachrow(df))
-        frame_plot = plot()
-        frame_plot_zoom = plot()
-        current_percentage = (line_n/size(df)[1]*100)
-        if current_percentage - last_percentage > 1
-            print("Progreso: ", round(current_percentage, digits = 2), "%\r")
-            last_percentage = current_percentage
-        end
-        #Dibujar todos los planetas
-        for (plabel, index) in PlanetsIndex
-            scatter!(frame_plot, [row["p"*string(index)*"x1"]], [row["p"*string(index)*"x2"]], label=nothing)
-            scatter!(frame_plot_zoom, [row["p"*string(index)*"x1"]], [row["p"*string(index)*"x2"]], label=string(plabel))
-        end
-        xlabel!(frame_plot, "t = "*string(round(row.time*58.1, digits = 2))*" días")
-        xlabel!(frame_plot_zoom, "t = "*string(round(row.time*58.1, digits = 2))*" días")
-
-        #Dibujar el sol
-        scatter!(frame_plot, [0.0], [0.0], label=nothing,  xlims=(-50, 50), ylim = (-50, 50), aspect_ratio = :equal, legend = :outertopright)
-        scatter!(frame_plot_zoom, [0.0], [0.0], label="Sol",  xlims=width, ylim = height, aspect_ratio = :equal, legend = :outertopright)
-
-        frame(animation, plot(frame_plot, frame_plot_zoom, layout = l))
-    end
-    gif(animation, "Tarea1/SistemaSolar.gif",fps = FPS)
+    
 end
