@@ -46,7 +46,7 @@ end
     
 # Parametros de la simulacion
 begin
-    FPS = 10
+    FPS = 100
     length_of_sim = 10
     step = 0.0001
 end
@@ -100,12 +100,33 @@ function runSimulation()
     CSV.write("Tarea1/SistemaSolar.out", simulation_data)
 end
 
-begin
-    #Parámetros de la animación
-    width = (-2, 2)
-    height = (-2, 2)
-end
 function buildAnimation()
+    #Leer los datos y guardarlos en un DataFrame
     df = DataFrame(CSV.File("Tarea1/SistemaSolar.out"))
-    
+    current_row = Observable{Int64}(1)
+
+    figure = Figure()
+    ax = Axis(figure[1,1], title = @lift("t = " * string(round(df[$(current_row), :time] * 58.1),2)* " días"))
+    xlims!(ax, (-5, 5))
+    ylims!(ax, (-5, 5))
+    function fromPlanetSymbolToX1X2(planet_symbol::Symbol, row_n::Int64)
+     return (df[row_n, "p"*string(PlanetsIndex[planet_symbol])*"x1"], 
+                df[row_n, "p"*string(PlanetsIndex[planet_symbol])*"x2"])
+    end
+
+
+    sol_scatter = scatter!(ax, [Point2f(0,0)], label = "Sol")
+
+
+    for plabel in PlanetsIndex
+        coord = @lift(fromPlanetSymbolToX1X2(plabel.first, $current_row))
+        point = @lift(Point2f[$(coord)])
+        scatter!(ax, point , label = string(plabel.first))     
+    end 
+   
+    axislegend(ax, position = :rto)
+
+    record(figure, "Tarea1/animacionmakie.mp4", range(1, size(df)[1]); framerate = FPS) do row_number
+        current_row[] = row_number
+    end
 end
