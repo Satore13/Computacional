@@ -46,8 +46,8 @@ end
     
 # Parametros de la simulacion
 begin
-    FPS = 100
-    length_of_sim = 10
+    FPS = 10
+    length_of_sim = 100
     step = 0.0001
 end
 global PlanetsIndex = DataStructures.OrderedDict{Symbol, Int64}(:Mercurio => 1, :Venus=> 2, :Tierra => 3, :Marte => 4, :Jupiter => 5, :Saturno => 6, :Urano => 7, :Neptuno => 8)
@@ -80,7 +80,8 @@ function runSimulation()
     println("FPS: ", FPS)
     println("Paso: ", step)
     println("Duración: ", length_of_sim)
-    println("Frames totales a simular: ", number_of_frames)
+    println("Frames reales a simular: ", number_of_frames)
+    println("Frames a guardar: ", )
     println("-------------------")
     last_percentage = 0.0
     for i in 1:number_of_frames
@@ -106,9 +107,13 @@ function buildAnimation()
     current_row = Observable{Int64}(1)
 
     figure = Figure()
-    ax = Axis(figure[1,1], title = @lift("t = " * string(round(df[$(current_row), :time] * 58.1),2)* " días"))
-    xlims!(ax, (-5, 5))
-    ylims!(ax, (-5, 5))
+    ax = Axis(figure[1,1], title = @lift("t = " * string(round(df[$(current_row), :time] * 58.1),2)* " días"), aspect = 1)
+    ax_full = Axis(figure[2,1], aspect = 1)
+    xlims!(ax, (-2.5, 2.5))
+    ylims!(ax, (-2.5, 2.5))
+    xlims!(ax_full, (-50, 50))
+    ylims!(ax_full, (-50, 50))
+
     function fromPlanetSymbolToX1X2(planet_symbol::Symbol, row_n::Int64)
      return (df[row_n, "p"*string(PlanetsIndex[planet_symbol])*"x1"], 
                 df[row_n, "p"*string(PlanetsIndex[planet_symbol])*"x2"])
@@ -116,17 +121,26 @@ function buildAnimation()
 
 
     sol_scatter = scatter!(ax, [Point2f(0,0)], label = "Sol")
+    sol_scatter = scatter!(ax_full, [Point2f(0,0)], label = "Sol")
 
 
     for plabel in PlanetsIndex
         coord = @lift(fromPlanetSymbolToX1X2(plabel.first, $current_row))
         point = @lift(Point2f[$(coord)])
-        scatter!(ax, point , label = string(plabel.first))     
+        scatter!(ax, point , label = string(plabel.first))
+        scatter!(ax_full, point , label = string(plabel.first))          
     end 
    
-    axislegend(ax, position = :rto)
+    Legend(figure[:,2], ax)
 
-    record(figure, "Tarea1/animacionmakie.mp4", range(1, size(df)[1]); framerate = FPS) do row_number
+    last_percentage = 0.0
+    number_of_rows = size(df)[1]
+    record(figure, "Tarea1/animacionmakie.mp4", range(1, number_of_rows); framerate = FPS) do row_number
         current_row[] = row_number
+        current_percentage = (row_number/number_of_rows*100)
+        if current_percentage - last_percentage > 1
+            print("Progreso: ", round(current_percentage, digits = 2), "%\r")
+            last_percentage = current_percentage
+        end
     end
 end
