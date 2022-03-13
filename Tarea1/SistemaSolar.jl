@@ -47,11 +47,7 @@ end
 # Parametros de la simulacion
 begin
     FPS = 10
-<<<<<<< HEAD
-    length_of_sim = 100 # x58.1 días aprox.
-=======
     length_of_sim = 100
->>>>>>> switchToMakie
     step = 0.0001
 end
 global PlanetsIndex = DataStructures.OrderedDict{Symbol, Int64}(:Mercurio => 1, :Venus=> 2, :Tierra => 3, :Marte => 4, :Jupiter => 5, :Saturno => 6, :Urano => 7, :Neptuno => 8)
@@ -138,34 +134,13 @@ function buildAnimation()
     Legend(figure[:,2], ax)
 
     last_percentage = 0.0
-<<<<<<< HEAD
-    for (line_n, row) in enumerate(eachrow(df))
-        frame_plot = plot()
-        current_percentage = (line_n/size(df)[1]*100)
-=======
     number_of_rows = size(df)[1]
     record(figure, "Tarea1/animacionmakie.mp4", range(1, number_of_rows); framerate = FPS) do row_number
         current_row[] = row_number
         current_percentage = (row_number/number_of_rows*100)
->>>>>>> switchToMakie
         if current_percentage - last_percentage > 1
             print("Progreso: ", round(current_percentage, digits = 2), "%\r")
             last_percentage = current_percentage
         end
-<<<<<<< HEAD
-        #Dibujar todos los planetas
-        for (plabel, index) in PlanetsIndex
-            scatter!(frame_plot, [row["p"*string(index)*"x1"]], [row["p"*string(index)*"x2"]], label=string(plabel))
-        end
-        xlabel!(frame_plot, "t = "*string(round(row.time*58.1, digits = 2))*" días")
-
-        #Dibujar el sol
-        scatter!(frame_plot, [0.0], [0.0], label="Sol",  xlims=(-50, 50), ylim = (-50, 50), aspect_ratio = :equal, legend = :outertopright)
-        
-        #Dibujar zona ampliada
-        lens!(frame_plot, [-2.5, 2.5], [-2.5, 2.5], inset = (1, bbox(0.4,0.6,0.3,0.3)), aspect_ratio = :equal)
-        frame(animation, frame_plot)
-=======
->>>>>>> switchToMakie
     end
 end
