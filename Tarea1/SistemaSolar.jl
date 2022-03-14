@@ -1,5 +1,5 @@
 include("Verlet.jl")
-Particle, Frame = Verlet.Particle, Verlet.Frame
+Particle, Frame = Verlet.Particle, Verlet.DistFrame
 import Base.string
 using CSV, CairoMakie, DataFrames
 using DataStructures
@@ -47,7 +47,7 @@ end
 # Parametros de la simulacion
 begin
     FPS = 10
-    length_of_sim = 100
+    length_of_sim = 10
     step = 0.0001
 end
 global PlanetsIndex = DataStructures.OrderedDict{Symbol, Int64}(:Mercurio => 1, :Venus=> 2, :Tierra => 3, :Marte => 4, :Jupiter => 5, :Saturno => 6, :Urano => 7, :Neptuno => 8)
