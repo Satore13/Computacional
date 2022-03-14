@@ -1,13 +1,16 @@
 module Verlet
+    #= AbstractFrame debería heredar un array de partículas que se consiga mediante getParticles así como una variable t =#
     abstract type AbstractFrame end
     using DataFrames, DataStructures
     #Estructura que almacena toda la información necesaria de una partícula
-    struct Particle
+    struct Particle 
         x::Vector{Float64}
         v::Vector{Float64}
         a::Vector{Float64}
         mass::Float64
-        Particle(x, v, mass) = new(x, v,  zeros(Real, length(x)) ,mass)
+        tags::Dict{Symbol, Symbol}
+        Particle(x::Vector{Float64}, v::Vector{Float64}, mass::Float64) = new(x, v,  zeros(Real, length(x)) ,mass, Dict())
+        Particle(x::Vector{Float64}, v::Vector{Float64}, mass::Float64, tags::Dict{Symbol, Symbol}) = new(x, v,  zeros(Real, length(x)) ,mass, tags)
         Particle(x, v, a, mass) = new(x, v, a, mass)
     end
 
@@ -24,6 +27,19 @@ module Verlet
     getParticles(f::IndistFrame)::Vector{Particle} = f.particles
     getParticles(f::DistFrame)::Vector{Particle} = values(f.particles)
 
+    function getParticleWithTag(particles::Vector{Particle}, identifier::Pair{Symbol, Symbol})::Vector{Particle}
+        found_particles = Particle[]
+        for particle in particles
+            if identifier in particle.tags
+                push!(found_particles, particle)
+            end
+        end
+        return found_particles
+    end
+
+    function getParticleWithTag(f::T, identifier::Pair{Symbol, Symbol})::Vector{Particle} where T <: AbstractFrame
+        return getParticleWithTag(f.particles, identifier)
+    end
 
     function dataFrameRowFromFrame(frame::T)::DataFrame where T <: AbstractFrame
         df = DataFrame()
