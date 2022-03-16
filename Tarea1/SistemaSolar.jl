@@ -1,7 +1,6 @@
 include("Verlet.jl")
-Particle, Frame = Verlet.Particle, Verlet.DistFrame
-import Base.string
-using CSV, CairoMakie, DataFrames
+Particle, Frame = Verlet.Particle, Verlet.IndistFrame
+using CSV, CairoMakie, Serialization
 using DataStructures
 
 #=
@@ -67,21 +66,19 @@ begin
 end
 
 function runSimulation()
-    initial_frame = Frame(0.0, list_of_planets)
-    simulation_data = Verlet.dataFrameRowFromFrame(initial_frame)
+    f = Frame(0.0, list_of_planets)
     
     time_between_frames = FPS^-1
-    time_of_last_frame = 0.0
     number_of_frames = length_of_sim/step
 
-    f = initial_frame
-    
+    frames = Frame[f]
+
     println("Simulación del sistema solar con parámetros: ")
     println("FPS: ", FPS)
     println("Paso: ", step)
     println("Duración: ", length_of_sim)
     println("Frames reales a simular: ", number_of_frames)
-    println("Frames a guardar: ", )
+    println("Frames a guardar: ", FPS * length_of_sim)
     println("-------------------")
     last_percentage = 0.0
     for i in 1:number_of_frames
@@ -91,23 +88,24 @@ function runSimulation()
             print("Progreso: ", round(current_percentage, digits = 2), "%\r")
             last_percentage = current_percentage
         end
-        if f.t - time_of_last_frame > time_between_frames
-            Verlet.addFrameRowToDataFrame!(simulation_data, f)
-            time_of_last_frame = f.t
+        if f.t - last(frames).t > time_between_frames
+            push!(frames, f)
         end
     end
     println("Progreso: ", 100.00, "%")
     println("Completado")
-    CSV.write("Tarea1/SistemaSolar.out", simulation_data)
+    serialize("Tarea1/SistemaSolar.out", frames)
 end
 
 function buildAnimation()
     #Leer los datos y guardarlos en un DataFrame
-    df = DataFrame(CSV.File("Tarea1/SistemaSolar.out"))
-    current_row = Observable{Int64}(1)
+    println("Cargando archivo...")
+    data = deserialize("Tarea1/SistemaSolar.out")
+    println("Archivo cargado")
+    current_frame_n = Observable{Int64}(1)
 
     figure = Figure()
-    ax = Axis(figure[1,1], title = @lift("t = " * string(round(df[$(current_row), :time] * 58.1),2)* " días"), aspect = 1)
+    ax = Axis(figure[1,1], title = @lift("t = " * string(round(data[$current_frame_n].t, digits = 2)) * " días"), aspect = 1)
     ax_full = Axis(figure[2,1], aspect = 1)
     xlims!(ax, (-2.5, 2.5))
     ylims!(ax, (-2.5, 2.5))
@@ -115,8 +113,8 @@ function buildAnimation()
     ylims!(ax_full, (-50, 50))
 
     function fromPlanetSymbolToX1X2(planet_symbol::Symbol, row_n::Int64)
-     return (df[row_n, "p"*string(PlanetsIndex[planet_symbol])*"x1"], 
-                df[row_n, "p"*string(PlanetsIndex[planet_symbol])*"x2"])
+        return (data[row_n].particles[PlanetsIndex[planet_symbol]].x[1],
+                    data[row_n].particles[PlanetsIndex[planet_symbol]].x[2])
     end
 
 
@@ -125,7 +123,7 @@ function buildAnimation()
 
 
     for plabel in PlanetsIndex
-        coord = @lift(fromPlanetSymbolToX1X2(plabel.first, $current_row))
+        coord = @lift(fromPlanetSymbolToX1X2(plabel.first, $current_frame_n))
         point = @lift(Point2f[$(coord)])
         scatter!(ax, point , label = string(plabel.first))
         scatter!(ax_full, point , label = string(plabel.first))          
@@ -134,9 +132,9 @@ function buildAnimation()
     Legend(figure[:,2], ax)
 
     last_percentage = 0.0
-    number_of_rows = size(df)[1]
-    record(figure, "Tarea1/animacionmakie.mp4", range(1, number_of_rows); framerate = FPS) do row_number
-        current_row[] = row_number
+    number_of_rows = size(data)[1]
+    record(figure, "Tarea1/SistemaSolar.mp4", range(1, number_of_rows); framerate = FPS) do row_number
+        current_frame_n[] = row_number
         current_percentage = (row_number/number_of_rows*100)
         if current_percentage - last_percentage > 1
             print("Progreso: ", round(current_percentage, digits = 2), "%\r")
@@ -144,3 +142,5 @@ function buildAnimation()
         end
     end
 end
+
+#TODO: Refactorizar todo el tema de identificar los planetas aprovechando las tags
