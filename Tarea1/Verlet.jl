@@ -1,9 +1,11 @@
 module Verlet
     #= AbstractFrame debería heredar un array de partículas que se consiga mediante getParticles así como una variable t =#
     abstract type AbstractFrame end
+    #= Ha de heredar vectoresf64 x,v,a así como massf64 y tagsDict(Symbol => Symbol) =#
+    abstract type AbstractParticle end
     using DataFrames, DataStructures
     #Estructura que almacena toda la información necesaria de una partícula
-    struct Particle 
+    struct Particle <: AbstractParticle
         x::Vector{Float64}
         v::Vector{Float64}
         a::Vector{Float64}
@@ -14,21 +16,16 @@ module Verlet
         Particle(x, v, a, mass) = new(x, v, a, mass)
     end
 
-    #Microestado del sistema en un tiempo t
-    struct IndistFrame <: AbstractFrame
+    #Microestado del sistema en un tiempo t, frame más básico
+    struct BFrame <: AbstractFrame
         t::Float64
-        particles::Vector{Particle}
-    end
-    struct DistFrame <: AbstractFrame
-        t::Float64
-        particles::OrderedDict{Symbol, Particle}
+        particles::Vector{AbstractParticle}
     end
 
-    getParticles(f::IndistFrame)::Vector{Particle} = f.particles
-    getParticles(f::DistFrame)::Vector{Particle} = values(f.particles)
+    getParticles(f::AbstractFrame)::Vector{AbstractParticle} = f.particles
 
-    function getParticleWithTag(particles::Vector{Particle}, identifier::Pair{Symbol, Symbol})::Vector{Particle}
-        found_particles = Particle[]
+    function getParticleWithTag(particles::Vector{P}, identifier::Pair{Symbol, Symbol})::Vector{P} where P <: AbstractParticle
+        found_particles = P[]
         for particle in particles
             if identifier in particle.tags
                 push!(found_particles, particle)
@@ -37,7 +34,7 @@ module Verlet
         return found_particles
     end
 
-    function getParticleWithTag(f::T, identifier::Pair{Symbol, Symbol})::Vector{Particle} where T <: AbstractFrame
+    function getParticleWithTag(f::T, identifier::Pair{Symbol, Symbol})::Vector{AbstractParticle} where T <: AbstractFrame
         return getParticleWithTag(f.particles, identifier)
     end
 
@@ -58,15 +55,15 @@ module Verlet
         append!(df, dataFrameRowFromFrame(frame))
     end
 
-    function stepFrame(frame::T, step::Float64, acceleration::Function, update::Function)::T where T <: AbstractFrame
-        aux_particles = Vector{Particle}(undef, 0)
-        new_particles = Vector{Particle}(undef, 0)
+    function stepFrame(frame::T, step::Float64, acceleration::Function, update::Function)::T where {T <: AbstractFrame, P<:AbstractParticle}
+        aux_particles = Vector{P}(undef, 0)
+        new_particles = Vector{P}(undef, 0)
 
         for p in getParticles(frame)
             initial_a = acceleration(p, frame)
             aux_w = p.v .+ step/2 .* initial_a
             new_x = p.x .+ step .* aux_w
-            push!(aux_particles, Particle(new_x, p.v, initial_a,p.mass))
+            push!(aux_particles, P(new_x, p.v, initial_a,p.mass))
         end
 
         if update ≢ nothing

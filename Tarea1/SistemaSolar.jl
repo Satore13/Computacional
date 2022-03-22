@@ -1,5 +1,5 @@
 include("Verlet.jl")
-Particle, Frame = Verlet.Particle, Verlet.IndistFrame
+Particle = Verlet.Particle, Verlet
 using CSV, CairoMakie, Serialization
 using DataStructures
 
@@ -17,7 +17,11 @@ fromOwnUnitsTime(t::Float64) = t / √(1.989e30*6.67384e-11/((1.496e11)^3))
 fromOwnUnitsMeters(d::Float64) = d * 1.496e11 
 fromOwnUnitsSpeed(v::Float64) = fromOwnUnitsMeters(toOwnUnitsTime(v))
 
-
+struct Frame <: Verlet.AbstractFrame
+    particles::Vector{Particles}
+    t::Float64
+    
+end
 
 function norm(x::Vector{Float64})::Float64
     normsq = 0.0
