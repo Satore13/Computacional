@@ -1,6 +1,5 @@
 include("Verlet.jl")
 import Base.rand
-Particle, Frame = Verlet.Particle, Verlet.IndistFrame
 using Serialization, CairoMakie
 #=
 Funciones auxiliares para ayudar con las conversiones de unidades - Se asume que las unidades externas son del SIU - 
@@ -18,6 +17,24 @@ fromOwnUnitsMeters(d::Float64) = d * 1.496e11
 fromOwnUnitsSpeed(v::Float64) = fromOwnUnitsMeters(toOwnUnitsTime(v))
 
 Range2f = Tuple{Float64, Float64}
+
+struct Frame <: Verlet.AbstractFrame
+    particles::Vector{Particle}
+    t::Float64
+    lost_energy::Float64
+end
+
+struct Particle <: AbstractParticle
+    x::Vector{Float64}
+    v::Vector{Float64}
+    a::Vector{Float64}
+    mass::Float64
+    tags::Dict{Symbol, Symbol}
+    radio::Float64
+    Particle(x::Vector{Float64}, v::Vector{Float64}, mass::Float64) = new(x, v,  zeros(Real, length(x)) ,mass, Dict())
+    Particle(x::Vector{Float64}, v::Vector{Float64}, mass::Float64, tags::Dict{Symbol, Symbol}) = new(x, v,  zeros(Real, length(x)) ,mass, tags)
+    Particle(x, v, a, mass) = new(x, v, a, mass)
+end
 
 struct ParticleDistribution
     energy_range::Range2f
@@ -87,6 +104,7 @@ function uEnergy(p::Particle)::Float64
 end
 
 #sframes son los frames a grabar y rframes son los frames simulados -no se graban, sólo se usan para aumentar la precisión-
+#saved frames, real frames
 begin
     global FPS = 10
     global rframes_per_sframes = 100

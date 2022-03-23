@@ -1,25 +1,31 @@
 module Verlet
-    #= AbstractFrame debería heredar un array de partículas que se consiga mediante getParticles así como una variable t =#
+    """
+        abstract type AbstractFrame
+    AbstractFrame debería heredar un array de partículas que se consiga mediante getParticles así como una variable t
+
+    - t::Float64
+    - particles::Vector{AbstractParticle}
+    """
     abstract type AbstractFrame end
     #= Ha de heredar vectoresf64 x,v,a así como massf64 y tagsDict(Symbol => Symbol) =#
     abstract type AbstractParticle end
     using DataFrames, DataStructures
     #Estructura que almacena toda la información necesaria de una partícula
-    struct Particle <: AbstractParticle
+    struct BParticle <: AbstractParticle
         x::Vector{Float64}
         v::Vector{Float64}
         a::Vector{Float64}
         mass::Float64
         tags::Dict{Symbol, Symbol}
-        Particle(x::Vector{Float64}, v::Vector{Float64}, mass::Float64) = new(x, v,  zeros(Real, length(x)) ,mass, Dict())
-        Particle(x::Vector{Float64}, v::Vector{Float64}, mass::Float64, tags::Dict{Symbol, Symbol}) = new(x, v,  zeros(Real, length(x)) ,mass, tags)
-        Particle(x, v, a, mass) = new(x, v, a, mass)
+        BParticle(x::Vector{Float64}, v::Vector{Float64}, mass::Float64) = new(x, v,  zeros(Real, length(x)) ,mass, Dict())
+        BParticle(x::Vector{Float64}, v::Vector{Float64}, mass::Float64, tags::Dict{Symbol, Symbol}) = new(x, v,  zeros(Real, length(x)) ,mass, tags)
+        BParticle(x, v, a, mass, tags) = new(x, v, a, mass, tags)
     end
 
     #Microestado del sistema en un tiempo t, frame más básico
-    struct BFrame <: AbstractFrame
+    struct BFrame{P<: AbstractParticle} <: AbstractFrame 
         t::Float64
-        particles::Vector{AbstractParticle}
+        particles::Vector{P}
     end
 
     getParticles(f::AbstractFrame)::Vector{AbstractParticle} = f.particles
@@ -55,15 +61,15 @@ module Verlet
         append!(df, dataFrameRowFromFrame(frame))
     end
 
-    function stepFrame(frame::T, step::Float64, acceleration::Function, update::Function)::T where {T <: AbstractFrame, P<:AbstractParticle}
+    function stepFrame(frame::T, step::Float64, acceleration::Function, update::Function)::T where {T <: AbstractFrame}        
+        P = eltype(frame.particles)
         aux_particles = Vector{P}(undef, 0)
         new_particles = Vector{P}(undef, 0)
-
         for p in getParticles(frame)
             initial_a = acceleration(p, frame)
             aux_w = p.v .+ step/2 .* initial_a
             new_x = p.x .+ step .* aux_w
-            push!(aux_particles, P(new_x, p.v, initial_a,p.mass))
+            push!(aux_particles, P(new_x, p.v, initial_a,p.mass, Dict()))
         end
 
         if update ≢ nothing
@@ -74,17 +80,17 @@ module Verlet
             new_a = acceleration(p, aux_frame)::Vector{Float64}
             aux_w = p.v .+ step/2 .* p.a
             new_v = aux_w .+ step/2 .* new_a
-            push!(new_particles, Particle(p.x, new_v, p.mass))
+            push!(new_particles, P(p.x, new_v, p.mass))
         end
 
         return update(T(frame.t + step, new_particles))::T
     end
 
-    function stepFrame(frame::T, step::Float64, acceleration::Function)::T where T <: AbstractFrame
+    function stepFrame(frame::T, step::Float64, acceleration::Function)::T where {T <: AbstractFrame}
         stepFrame(frame, step, acceleration, (x) -> x)
     end
 
     #Funciones mecánicas adicionales
-    calculateMomentum(p::Particle)::Vector{Float64} = p.v * p.mass
+    calculateMomentum(p::AbstractParticle)::Vector{Float64} = p.v * p.mass
     calculateMomentum(frame::AbstractFrame)::Vector{Float64} = sum(calculateMomentum, getParticles(frame)) 
 end
