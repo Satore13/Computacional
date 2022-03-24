@@ -1,5 +1,5 @@
 include("Verlet.jl")
-Particle = Verlet.Particle, Verlet
+Particle, Frame = Verlet.BParticle, Verlet.BFrame
 using CSV, CairoMakie, Serialization
 using DataStructures
 
@@ -16,12 +16,6 @@ fromOwnUnitsMass(m::Float64) = m * 1.989e30
 fromOwnUnitsTime(t::Float64) = t / √(1.989e30*6.67384e-11/((1.496e11)^3))
 fromOwnUnitsMeters(d::Float64) = d * 1.496e11 
 fromOwnUnitsSpeed(v::Float64) = fromOwnUnitsMeters(toOwnUnitsTime(v))
-
-struct Frame <: Verlet.AbstractFrame
-    particles::Vector{Particles}
-    t::Float64
-    
-end
 
 function norm(x::Vector{Float64})::Float64
     normsq = 0.0
@@ -50,10 +44,10 @@ end
 # Parametros de la simulacion
 begin
     FPS = 10
-    length_of_sim = 10
-    step = 0.0001
+    length_of_sim = 100
+    step = 0.01
 end
-global PlanetsIndex = DataStructures.OrderedDict{Symbol, Int64}(:Mercurio => 1, :Venus=> 2, :Tierra => 3, :Marte => 4, :Jupiter => 5, :Saturno => 6, :Urano => 7, :Neptuno => 8)
+global PlanetsIndex = DataStructures.OrderedDict{Symbol, Int64}(:Mercurio => 1, :Venus=> 2, :Tierra => 3, :Marte => 4, :Jupiter => 5, :Saturno => 6, :Urano => 7, :Neptuno => 8, :Pluton => 9)
 
 begin
     # Masas de los planetas en unidades de 10^24 metros que pasamos por nuestra función de conversión
@@ -101,15 +95,65 @@ function runSimulation()
     serialize("Tarea1/SistemaSolar.out", frames)
 end
 
-function buildAnimation()
+#Mal hecho el tener dos funciones así
+function buildAnimationGeoc(filename::String = "Tarea1/SistemaSolarGeoc.out")
     #Leer los datos y guardarlos en un DataFrame
     println("Cargando archivo...")
-    data = deserialize("Tarea1/SistemaSolar.out")
+    data = deserialize(filename)
     println("Archivo cargado")
     current_frame_n = Observable{Int64}(1)
 
     figure = Figure()
-    ax = Axis(figure[1,1], title = @lift("t = " * string(round(data[$current_frame_n].t, digits = 2)) * " días"), aspect = 1)
+    ax = Axis(figure[1,1], title = @lift("t = " * string(round(58.1*data[$current_frame_n].t, digits = 2)) * " días"), aspect = 1)
+    ax_full = Axis(figure[2,1], aspect = 1)
+    xlims!(ax, (-2.5, 2.5))
+    ylims!(ax, (-2.5, 2.5))
+    xlims!(ax_full, (-50, 50))
+    ylims!(ax_full, (-50, 50))
+
+    function fromPlanetSymbolToX1X2(planet_symbol::Symbol, row_n::Int64)
+        return (data[row_n].particles[PlanetsIndex[planet_symbol]].x[1],
+                    data[row_n].particles[PlanetsIndex[planet_symbol]].x[2])
+    end
+
+
+    
+    for plabel in PlanetsIndex
+        coord = @lift(fromPlanetSymbolToX1X2(plabel.first, $current_frame_n))
+        point = @lift(Point2f[$(coord)])
+        scatter!(ax, point , label = string(plabel.first))
+        scatter!(ax_full, point , label = string(plabel.first))          
+    end 
+    sol_coord = @lift(( data[$current_frame_n].particles[10].x[1], data[$current_frame_n].particles[10].x[2]))
+    sol_point = @lift(Point2f[$sol_coord])
+    scatter!(ax, sol_point , label = "Sol")
+    scatter!(ax_full, sol_point , label = "Sol")
+
+
+
+    Legend(figure[:,2], ax)
+
+    last_percentage = 0.0
+    number_of_rows = size(data)[1]
+    record(figure, "Tarea1/SistemaSolarGeoc.mp4", range(1, number_of_rows); framerate = FPS) do row_number
+        current_frame_n[] = row_number
+        current_percentage = (row_number/number_of_rows*100)
+        if current_percentage - last_percentage > 1
+            print("Progreso: ", round(current_percentage, digits = 2), "%\r")
+            last_percentage = current_percentage
+        end
+    end
+end
+
+function buildAnimation(filename::String = "Tarea1/SistemaSolar.out")
+    #Leer los datos y guardarlos en un DataFrame
+    println("Cargando archivo...")
+    data = deserialize(filename)
+    println("Archivo cargado")
+    current_frame_n = Observable{Int64}(1)
+
+    figure = Figure()
+    ax = Axis(figure[1,1], title = @lift("t = " * string(round(data[$current_frame_n].t *58.1, digits = 2)) * " días"), aspect = 1)
     ax_full = Axis(figure[2,1], aspect = 1)
     xlims!(ax, (-2.5, 2.5))
     ylims!(ax, (-2.5, 2.5))
@@ -147,4 +191,84 @@ function buildAnimation()
     end
 end
 
-#TODO: Refactorizar todo el tema de identificar los planetas aprovechando las tags
+function totalEnergyFrame(f::Frame)
+    total_k = sum([kEnergy(p) for p in f.particles])
+    total_p = sum([uEnergy(p) for p in f.particles])
+
+    return total_k + total_p
+end
+
+function plotEnergyvsTime()
+    data = deserialize("Tarea1/SistemaSolar.out")
+
+    t_ = getfield.(data, :t)
+    E_ = [totalEnergyFrame(f) for f in data]
+
+    relErr_ = abs.( (first(E_) .- E_) ./ first(E_))
+
+    fig = Figure()
+    ax = Axis(fig[1,1], title = "Error relativo en la energía")
+    lines!(ax, t_, relErr_)
+
+    return fig
+end
+
+function plotAngularMomentum()
+    data = deserialize("Tarea1/SistemaSolar.out")
+
+    t_ = getfield.(data, :t)
+    L_ = [AngularMomentum(f) for f in data]
+
+    relErr_ = abs.( (first(L_) .- L_) ./ first(L_))
+
+    fig = Figure()
+    ax = Axis(fig[1,1], title = "Error relativo en el Momento Angular")
+    lines!(ax, t_, relErr_)
+
+    return fig
+end
+
+function AngularMomentum(f::Frame)
+    return sum([AngularMomentum(p) for p in f.particles])
+end
+
+function AngularMomentum(p::Particle)
+    crossP = abs( p.x[1] * p.v[2] - p.x[2]*p.v[1])
+    return p.mass * crossP
+end
+
+function kEnergy(p::Particle)::Float64
+    0.5 * norm(p.v)^2 * p.mass
+end
+function uEnergy(p::Particle)::Float64  
+    -p.mass/norm(p.x)
+end
+
+function createGeocView()
+    data = deserialize("Tarea1/SistemaSolar.out")
+
+    new_data = Frame[]
+    for f in data
+        new_t = f.t
+        new_particles = Particle[]
+        for p in f.particles
+            new_v = p.v .- f.particles[PlanetsIndex[:Tierra]].v
+            new_mass = p.mass
+            new_x = p.x .- f.particles[PlanetsIndex[:Tierra]].x
+            push!(new_particles, Particle(new_x, new_v, new_mass))
+        end
+        sol_v = (-1) .* f.particles[PlanetsIndex[:Tierra]].v
+        sol_x = (-1) .* f.particles[PlanetsIndex[:Tierra]].x
+        push!(new_particles, Particle(sol_x, sol_v, 1.0))
+        push!(new_data, Frame(new_t, new_particles))
+    end
+
+    serialize("Tarea1/SistemaSolarGeoc.out", new_data)
+end
+
+function runAndRender()
+    runSimulation()
+    buildAnimation()
+    createGeocView()
+    buildAnimationGeoc()
+end
