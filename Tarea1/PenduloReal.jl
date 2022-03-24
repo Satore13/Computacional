@@ -3,6 +3,8 @@ Particle = Verlet.BParticle
 Frame = Verlet.BFrame
 using Serialization
 using CairoMakie, DataStructures
+using CSV
+using DataFrames
 function forceOnPendulum(p::Particle, f::Frame)::Vector{Float64}
     return [-p.mass*9.8*sin(p.x[1])]
 end
@@ -23,6 +25,33 @@ function wrapAngle(frame)
     
 
     return Frame(frame.t, new_particles)
+end
+
+function kEnergy(f::Frame)
+    p = f.particles[1]
+    return 1/2*p.v[1]^2
+end
+
+function pEnergy(f::Frame)
+    p = f.particles[1]
+    return (1 - cos(p.x[1])) * 9.8
+end
+
+function energy_vs_time(filename::String)
+    data = deserialize(filename)
+
+    ts = getfield.(data, :t)
+    pEs = [pEnergy(f) for f in data]
+    kEs = [kEnergy(f) for f in data]
+    tEs = pEs .+ kEs
+    df = DataFrame(:t => ts, :Ep => pEs, :Ek => kEs, :Et => tEs)
+    fig = Figure()
+    ax = Axis(fig[1,1], title = filename)
+    lines!(ax, ts, pEs, label = "Energía Potencial")
+    lines!(ax, ts, kEs, label = "Energía Cinética")
+    lines!(ax, ts, tEs, label = "Energía Total")
+    axislegend(ax)
+    return fig
 end
 
 function run(θ0, v0)
@@ -77,7 +106,7 @@ function animate(name::String)
         ylims!(ax, (-2.5, 2.5))
     end
     for ax in axises_ph
-        xlims!(ax, (-10, 10))
+        xlims!(ax, (-π, π))
         ylims!(ax, (-10, 10))
     end
 
