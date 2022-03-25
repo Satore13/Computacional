@@ -44,7 +44,7 @@ end
 # Parametros de la simulacion
 begin
     FPS = 10
-    length_of_sim = 100
+    length_of_sim = 1000
     step = 0.01
 end
 global PlanetsIndex = DataStructures.OrderedDict{Symbol, Int64}(:Mercurio => 1, :Venus=> 2, :Tierra => 3, :Marte => 4, :Jupiter => 5, :Saturno => 6, :Urano => 7, :Neptuno => 8, :Pluton => 9)
@@ -201,10 +201,10 @@ end
 function plotEnergyvsTime()
     data = deserialize("Tarea1/SistemaSolar.out")
 
-    t_ = getfield.(data, :t)
+    t_ = getfield.(data, :t) .* 58.1
     E_ = [totalEnergyFrame(f) for f in data]
 
-    relErr_ = abs.( (first(E_) .- E_) ./ first(E_))
+    relErr_ = abs.( (first(E_) .- E_) ./ first(E_)) 
 
     fig = Figure()
     ax = Axis(fig[1,1], title = "Error relativo en la energía")
@@ -216,7 +216,7 @@ end
 function plotAngularMomentum()
     data = deserialize("Tarea1/SistemaSolar.out")
 
-    t_ = getfield.(data, :t)
+    t_ = getfield.(data, :t) .* 58.1
     L_ = [AngularMomentum(f) for f in data]
 
     relErr_ = abs.( (first(L_) .- L_) ./ first(L_))
