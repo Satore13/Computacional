@@ -25,6 +25,7 @@ docs/site/
 
 *.out
 *.png
+*.svg
 *.dat
 *.gif
 *.mp4
@@ -34,3 +35,4 @@ Clases/
 .vscode
 AnimarDatos.jl
 
+Documentos/

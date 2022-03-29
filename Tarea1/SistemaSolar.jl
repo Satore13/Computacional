@@ -2,7 +2,7 @@ include("Verlet.jl")
 Particle, Frame = Verlet.BParticle, Verlet.BFrame
 using CSV, CairoMakie, Serialization
 using DataStructures
-
+CairoMakie.activate!(type = "svg")
 #=
 Funciones auxiliares para ayudar con las conversiones de unidades - Se asume que las unidades externas son del SIU - 
 Las unidades de masa son masas solares, las de distancia son la distancia tierra sol y las de tiempo corresponden a ≈ 58.1 días
