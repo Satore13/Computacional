@@ -43,7 +43,7 @@ end
     
 # Parametros de la simulacion
 begin
-    FPS = 10
+    FPS = 100
     length_of_sim = 1000
     step = 0.01
 end
@@ -264,6 +264,26 @@ function createGeocView()
     end
 
     serialize("Tarea1/SistemaSolarGeoc.out", new_data)
+end
+
+function calculatePeriod()
+    data = deserialize("Tarea1/SistemaSolar.out")
+
+    θ = []
+    last_y = 0.0
+    for (plabel, pindex) in PlanetsIndex
+
+        #push!(θ,[atan(f.particles[pindex].x[2]/f.particles[pindex].x[1]) for f in data])
+        for f in data
+            
+            if  last_y < 0 && f.particles[pindex].x[2] > 0.0
+                println("Período del planeta ",string(plabel), ":", f.t*58.1 )
+                @goto endfor
+            end
+            last_y = f.particles[pindex].x[2]   
+        end
+        @label endfor
+    end
 end
 
 function runAndRender()
