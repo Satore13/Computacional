@@ -2,8 +2,8 @@ import Base.size
 import Base.rand
 import Base.show
 struct Spin
-    val::Integer
-    function Spin(val::Integer)
+    val::Int64
+    function Spin(val::Int64)
         if !(val in [-1, 1])
             return error("El spin sólo puede valer ±1")
         else 
@@ -51,7 +51,7 @@ function generar_red_similar(r::Red)
     return Red(new_spins, r.Temperatura)
 end
 
-function energia(r::Red)
+function energia(r::Red)::Float64
 
     #Conseguimos la matriz de spines y el tamaño de la red
     s = getfield.(r.Nudos, :val)
@@ -66,7 +66,6 @@ function energia(r::Red)
         end
         return i
     end
-    
     #Elementos de la sumatoria
     elms = [ 
         begin
@@ -111,9 +110,7 @@ end
 
 function magnetizacion(r::Red)
     s = getfield.(r.Nudos, :val)
-    N = size(r)
-
-    return abs(sum(sij for sij in s))
+    return sum(sij for sij in s)
 end
 
 function probabilidad_transicion(from::Red, to::Red)
@@ -130,18 +127,36 @@ end
         Generamos una red similar y calculamos la probabilidad de transición, si un número generado aleatoria y uniformemente es menor que esa probabilidad 
     pasamos a esa nueva red. En caso contrario, nos quedamos con la configuración previa
 =#
-function paso(r::Red)
-    #Generamos una red igual salvo un spin invertido
-    nueva_r = generar_red_similar(r)
 
-    p = probabilidad_transicion(r, nueva_r)
+function energia_entre_similares(r::Red, x, y)::Float64
+    #Forma rápida de calcular la diferencia de energía con una configuración similar
+    s = getfield.(r.Nudos, :val)
+    N = size(r)
+    function wrap(i)
+        if i > N
+            i -= N
+        elseif i < 1
+            i += N
+        end
+        return i
+    end
 
-    ξ = rand()
- 
-    if ξ < p
-        return nueva_r
-    else 
-        return r
+
+    return float(s[x, y] * (s[wrap(x - 1), y] + s[wrap(x + 1), y] + s[x, wrap(y + 1)] + s[x, wrap(y - 1)]) +
+            s[x, y] * s[wrap(x - 1), y] +
+            s[x, y] * s[wrap(x + 1), y] +
+            s[x, y] * s[x, wrap(y - 1)] +
+            s[x, y] * s[x, wrap(y + 1)])
+end
+
+function paso!(r::Red)
+    N = size(r)
+    β = 1/r.Temperatura
+    x, y = rand(1:N, 2)
+    ΔE = energia_entre_similares(r, x, y)
+    p = exp(-β * ΔE)
+    if rand() < p
+       r.Nudos[x, y] = inverse_spin(r.Nudos[x, y]) 
     end
 end
 
@@ -155,15 +170,15 @@ function bucle_simulacion(red_inicial::Red, pasos_de_MC::Integer, guardar_cada::
 
     for n_pMC in 1:pasos_de_MC
         for _ in 1:N^2 
-            r = paso(r)
+            paso!(r)
         end
         porcentaje_actual = n_pMC / pasos_de_MC * 100
-        if porcentaje_actual - porcentaje_previo > 0.01
+        if porcentaje_actual - porcentaje_previo > 0.1
             print("Progreso: ", round(porcentaje_actual, digits = 2), "%\r")
             porcentaje_previo = porcentaje_actual
         end
         if n_pMC % guardar_cada == 0
-            push!(datos, r)
+            push!(datos, deepcopy(r))
         end
     end
 
