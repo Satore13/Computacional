@@ -75,25 +75,55 @@ function energia(r::Red)
         for i = 1:N, j in 1:N]
 
 
-    return -0.5 * sum(elms) / (2*N)
+    return -0.5 * sum(elms)
+end
+
+function Δenergia(from::Red, to::Red)
+    #Conseguimos la matriz de spines y el tamaño de la red
+    to_s = getfield.(to.Nudos, :val)
+    from_s = getfield.(from.Nudos, :val)
+
+    N = size(r)
+
+    #Hacemos equivalentes los spines 0 y N - Condiciones periódicas
+    function wrap(i)
+        if i > N
+            i -= N
+        elseif i < 1
+            i += N
+        end
+        return i
+    end
+    
+    function elm(s, i, j)
+        s[i, j] * (s[i, wrap(j + 1)] + s[i, wrap(j - 1)] + s[wrap(i + 1), j] + s[wrap(i - 1), j])
+    end
+    #Elementos de la sumatoria
+    elms = [ 
+        begin
+            elm(to_s, i, j) - elm(from_s, i, j) 
+        end
+        for i = 1:N, j in 1:N]
+
+
+    return -0.5 * sum(elms)
 end
 
 function magnetizacion(r::Red)
     s = getfield.(r.Nudos, :val)
     N = size(r)
 
-    return abs(sum(sij for sij in s)/N^2)
+    return abs(sum(sij for sij in s))
 end
 
 function probabilidad_transicion(from::Red, to::Red)
     if !(from.Temperatura ≈ to.Temperatura)
         error("La temperatura ha de ser la misma para ambas redes")
     end
-    Δenergia = energia(to) - energia(from)
 
     β = 1/from.Temperatura
 
-    return min(1, exp(-β * Δenergia))
+    return min(1, exp(-β * Δenergia(from, to)))
 end
 
 #= Paso del algoritmo de Metropolis:
