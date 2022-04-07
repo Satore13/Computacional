@@ -162,7 +162,7 @@ end
 
 function bucle_simulacion(red_inicial::Red, pasos_de_MC::Integer, guardar_cada::Integer = 1)::Vector{Red}
     N = size(red_inicial)
-    r = red_inicial
+    r = deepcopy(red_inicial)
     datos = Red[]
     push!(datos, red_inicial)
 
