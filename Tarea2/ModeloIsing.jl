@@ -83,7 +83,7 @@ function Δenergia(from::Red, to::Red)
     to_s = getfield.(to.Nudos, :val)
     from_s = getfield.(from.Nudos, :val)
 
-    N = size(r)
+    N = size(from)
 
     #Hacemos equivalentes los spines 0 y N - Condiciones periódicas
     function wrap(i)
