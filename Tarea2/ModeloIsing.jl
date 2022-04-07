@@ -75,7 +75,7 @@ function energia(r::Red)
         for i = 1:N, j in 1:N]
 
 
-    return -0.5 * sum(elms)
+    return -0.5 * sum(elms) / (2*N)
 end
 
 function magnetizacion(r::Red)
