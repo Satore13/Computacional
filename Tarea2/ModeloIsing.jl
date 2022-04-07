@@ -80,10 +80,9 @@ end
 
 function magnetizacion(r::Red)
     s = getfield.(r.Nudos, :val)
-
     N = size(r)
 
-    return sum(s)/N
+    return abs(sum(sij for sij in s)/N^2)
 end
 
 function probabilidad_transicion(from::Red, to::Red)
@@ -116,7 +115,7 @@ function paso(r::Red)
     end
 end
 
-function bucle_simulacion(red_inicial::Red, pasos_de_MC::Integer)::Vector{Red}
+function bucle_simulacion(red_inicial::Red, pasos_de_MC::Integer, guardar_cada::Integer = 1)::Vector{Red}
     N = size(red_inicial)
     r = red_inicial
     datos = Red[]
@@ -133,7 +132,9 @@ function bucle_simulacion(red_inicial::Red, pasos_de_MC::Integer)::Vector{Red}
             print("Progreso: ", round(porcentaje_actual, digits = 2), "%\r")
             porcentaje_previo = porcentaje_actual
         end
-        push!(datos, r)
+        if n_pMC % guardar_cada == 0
+            push!(datos, r)
+        end
     end
 
     return datos
