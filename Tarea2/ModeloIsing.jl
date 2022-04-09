@@ -174,7 +174,7 @@ function pasoMC!(r::Red)
                 end
             end
         end
-        @time Threads.@threads for (x, y) in directions
+        Threads.@threads for (x, y) in directions
             paso!(r, x, y)
         end
     end
