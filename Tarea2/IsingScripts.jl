@@ -2,7 +2,7 @@ include("ModeloIsing.jl")
 using GLMakie
 using Serialization
 function plotear_EyMvspMC(datos::Vector{Red}, guardadas_cada::Integer = 1)
-    N = size(data[1])
+    N = size(datos[1])
     fig = Figure()
     ax_E = Axis(fig[1, 1], xlabel = "pMC")
     ax_M = Axis(fig[2, 1], xlabel = "pMC")

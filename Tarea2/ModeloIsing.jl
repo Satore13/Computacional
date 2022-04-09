@@ -131,7 +131,6 @@ end
 
 function energia_entre_similares(r::Red, x::Int64, y::Int64)::Float64
     #Forma rápida de calcular la diferencia de energía con una configuración similar
-    s = getfield.(r.Nudos, :val)
     N = size(r)
     function wrap(i::Int64)::Int64
         if i > N
@@ -141,22 +140,25 @@ function energia_entre_similares(r::Red, x::Int64, y::Int64)::Float64
         end
         return i
     end
+    s0, s1, s2, s3, s4 = r.Nudos[x, y].val, r.Nudos[wrap(x - 1), y].val, r.Nudos[wrap(x+1), y].val, r.Nudos[x, wrap(y+1)].val, r.Nudos[x, wrap(y-1)].val
 
+    return float(2*s0*(s1 + s2 + s3 + s4))
 
-    return float(s[x, y] * (s[wrap(x - 1), y] + s[wrap(x + 1), y] + s[x, wrap(y + 1)] + s[x, wrap(y - 1)]) +
+    #=return float(s[x, y] * (s[wrap(x - 1), y] + s[wrap(x + 1), y] + s[x, wrap(y + 1)] + s[x, wrap(y - 1)]) +
             s[x, y] * s[wrap(x - 1), y] +
             s[x, y] * s[wrap(x + 1), y] +
             s[x, y] * s[x, wrap(y - 1)] +
-            s[x, y] * s[x, wrap(y + 1)])
+            s[x, y] * s[x, wrap(y + 1)])=#
 end
 
 function paso!(r::Red, x::Int64, y::Int64)
     β = 1/r.Temperatura::Float64
     ΔE = energia_entre_similares(r, x, y)
     p = exp(-β * ΔE)::Float64
-    if rand() < p
+    if rand() <= p
         r.Nudos[x, y] = inverse_spin(r.Nudos[x, y]) 
     end
+    return
 end
 
 function pasoMC!(r::Red)
