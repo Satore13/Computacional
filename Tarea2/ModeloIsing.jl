@@ -150,16 +150,34 @@ function energia_entre_similares(r::Red, x::Int64, y::Int64)::Float64
             s[x, y] * s[x, wrap(y + 1)])
 end
 
-function paso!(r::Red)::Nothing
-    N = size(r)::Int64
+function paso!(r::Red, x::Int64, y::Int64)
     β = 1/r.Temperatura::Float64
-    x, y = rand(1:N, 2)
     ΔE = energia_entre_similares(r, x, y)
     p = exp(-β * ΔE)::Float64
     if rand() < p
-       r.Nudos[x, y] = inverse_spin(r.Nudos[x, y]) 
+        r.Nudos[x, y] = inverse_spin(r.Nudos[x, y]) 
     end
-    return
+end
+
+function pasoMC!(r::Red)
+    N = size(r)::Int64
+    for _ in 1:N
+        directions = Tuple{Int64, Int64}[]
+        
+        for _ in 1:N
+            notok = true
+            while notok
+                new_d = (rand(1:N), rand(1:N))
+                if !(in(directions)(new_d))
+                    push!(directions, new_d)
+                    notok = false
+                end
+            end
+        end
+        @time Threads.@threads for (x, y) in directions
+            paso!(r, x, y)
+        end
+    end
 end
 
 function bucle_simulacion(red_inicial::Red, pasos_de_MC::Int64, guardar_cada::Int64 = 1)::Vector{Red}
@@ -169,9 +187,7 @@ function bucle_simulacion(red_inicial::Red, pasos_de_MC::Int64, guardar_cada::In
     push!(datos, red_inicial)
     porcentaje_previo = 0.0
     for n_pMC in 1:pasos_de_MC
-        for _ in 1:N^2 
-            paso!(r)
-        end
+        pasoMC!(r)
         porcentaje_actual = n_pMC / pasos_de_MC * 100
         if porcentaje_actual - porcentaje_previo > 0.1
             print("Progreso: ", round(porcentaje_actual, digits = 2), "%\r")
