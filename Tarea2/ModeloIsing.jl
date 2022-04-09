@@ -14,7 +14,7 @@ end
 function rand(::Type{Spin})
     return Spin(rand([-1, 1]))
 end
-function inverse_spin(s::Spin)
+function inverse_spin(s::Spin)::Spin
     if s === Spin(1)
         return Spin(-1)
     else 
@@ -27,7 +27,8 @@ struct Red
     Temperatura::Float64
     Red(Nudos, Temp) = size(Nudos)[1] != size(Nudos)[2] ? error("La red tiene que ser cuadrada") : new(Nudos, Temp)
     Red(Nudos) = Red(Nudos, 0.0)
-    Red(s::Spin, N::Integer) = Red([s for _ in 1:N, _ in 1:N])
+    Red(s::Spin, N::Int64, T::Float64) = Red([s for _ in 1:N, _ in 1:N], T)
+    Red(s::Spin, N::Int64) = Red(s, N, 0.0)
 end
 function rand(::Type{Red}, N::Integer)
     s = [rand(Spin) for _ in 1:N, _ in 1:N]
@@ -37,7 +38,7 @@ function rand(::Type{Red}, N::Integer, temp::Float64)
     s = [rand(Spin) for _ in 1:N, _ in 1:N]
     return Red(s, temp)
 end
-function size(r::Red)
+function size(r::Red)::Int64
     return size(r.Nudos)[1]
 end
 #Generar una red igual salvo inversión de un spin aleatorio
@@ -128,11 +129,11 @@ end
     pasamos a esa nueva red. En caso contrario, nos quedamos con la configuración previa
 =#
 
-function energia_entre_similares(r::Red, x, y)::Float64
+function energia_entre_similares(r::Red, x::Int64, y::Int64)::Float64
     #Forma rápida de calcular la diferencia de energía con una configuración similar
     s = getfield.(r.Nudos, :val)
     N = size(r)
-    function wrap(i)
+    function wrap(i::Int64)::Int64
         if i > N
             i -= N
         elseif i < 1
@@ -149,25 +150,24 @@ function energia_entre_similares(r::Red, x, y)::Float64
             s[x, y] * s[x, wrap(y + 1)])
 end
 
-function paso!(r::Red)
-    N = size(r)
-    β = 1/r.Temperatura
+function paso!(r::Red)::Nothing
+    N = size(r)::Int64
+    β = 1/r.Temperatura::Float64
     x, y = rand(1:N, 2)
     ΔE = energia_entre_similares(r, x, y)
-    p = exp(-β * ΔE)
+    p = exp(-β * ΔE)::Float64
     if rand() < p
        r.Nudos[x, y] = inverse_spin(r.Nudos[x, y]) 
     end
+    return
 end
 
-function bucle_simulacion(red_inicial::Red, pasos_de_MC::Integer, guardar_cada::Integer = 1)::Vector{Red}
+function bucle_simulacion(red_inicial::Red, pasos_de_MC::Int64, guardar_cada::Int64 = 1)::Vector{Red}
     N = size(red_inicial)
     r = deepcopy(red_inicial)
     datos = Red[]
     push!(datos, red_inicial)
-
     porcentaje_previo = 0.0
-
     for n_pMC in 1:pasos_de_MC
         for _ in 1:N^2 
             paso!(r)
@@ -185,3 +185,15 @@ function bucle_simulacion(red_inicial::Red, pasos_de_MC::Integer, guardar_cada::
     return datos
 end
 
+function testΔE()
+    N = 100
+
+    for x in 1:N, y in 1:N
+        r = rand(Red, N)
+        a = deepcopy(r.Nudos)
+        a[x, y] = inverse_spin(a[x, y])
+        tor = Red(a)
+
+        println(energia_entre_similares(r, x, y)  - energia(tor) + energia(r))
+    end
+end
