@@ -52,7 +52,7 @@ function generar_red_similar(r::Red)
     return Red(new_spins, r.Temperatura)
 end
 
-function energia(r::Red)::Float64
+function energia_norm(r::Red)::Float64
 
     #Conseguimos la matriz de spines y el tamaño de la red
     s = getfield.(r.Nudos, :val)
@@ -75,7 +75,7 @@ function energia(r::Red)::Float64
         for i = 1:N, j in 1:N]
 
 
-    return -0.5 * sum(elms)
+    return -0.5 * sum(elms) / size(r)^2 
 end
 
 function Δenergia(from::Red, to::Red)
@@ -109,9 +109,9 @@ function Δenergia(from::Red, to::Red)
     return -0.5 * sum(elms)
 end
 
-function magnetizacion(r::Red)
+function magnetizacion_norm(r::Red)
     s = getfield.(r.Nudos, :val)
-    return sum(sij for sij in s)
+    return sum(sij for sij in s)/ size(r)^2
 end
 
 function probabilidad_transicion(from::Red, to::Red)
