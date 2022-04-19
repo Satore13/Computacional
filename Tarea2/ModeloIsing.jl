@@ -203,15 +203,32 @@ function bucle_simulacion(red_inicial::Red, pasos_de_MC::Int64, guardar_cada::In
     return datos
 end
 
-function testΔE()
-    N = 100
+function local_correlation(red::Red, x::Integer, y::Integer, r::Integer)
+    my_spin = red.Nudos[x, y].val
+    N = size(red)
+    traslations = [(r, 0), (-r, 0), (0, r), (0, -r)]
 
-    for x in 1:N, y in 1:N
-        r = rand(Red, N)
-        a = deepcopy(r.Nudos)
-        a[x, y] = inverse_spin(a[x, y])
-        tor = Red(a)
-
-        println(energia_entre_similares(r, x, y)  - energia(tor) + energia(r))
+    #Hacemos equivalentes los spines 0 y N - Condiciones periódicas
+    function wrap(i)
+        if i > N
+            i -= N
+        elseif i < 1
+            i += N
+        end
+        return i
     end
+
+    other_positions = [(wrap(x + tx), wrap(y + ty)) for (tx, ty) in traslations]
+
+    return sum([ my_spin * red.Nudos[other_x, other_y].val for (other_x, other_y) in other_positions]) / 4
+end
+
+function global_correlation(red::Red, r::Integer)
+    N = size(red)
+    suma = 0.0
+    for i in 1:N, j in 1:N
+        suma += local_correlation(red, i, j, r)
+    end
+
+    return suma / N^2
 end
