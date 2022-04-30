@@ -1,6 +1,3 @@
-import Base.size
-import Base.rand
-import Base.show
 struct Spin
     val::Int64
     function Spin(val::Int64)
@@ -11,7 +8,7 @@ struct Spin
         end
     end
 end
-function rand(::Type{Spin})
+function Base.rand(::Type{Spin})
     return Spin(rand([-1, 1]))
 end
 function inverse_spin(s::Spin)::Spin
@@ -30,15 +27,15 @@ struct Red
     Red(s::Spin, N::Int64, T::Float64) = Red([s for _ in 1:N, _ in 1:N], T)
     Red(s::Spin, N::Int64) = Red(s, N, 0.0)
 end
-function rand(::Type{Red}, N::Integer)
+function Base.rand(::Type{Red}, N::Integer)
     s = [rand(Spin) for _ in 1:N, _ in 1:N]
     return Red(s)
 end
-function rand(::Type{Red}, N::Integer, temp::Float64)
+function Base.rand(::Type{Red}, N::Integer, temp::Float64)
     s = [rand(Spin) for _ in 1:N, _ in 1:N]
     return Red(s, temp)
 end
-function size(r::Red)::Int64
+function Base.size(r::Red)::Int64
     return size(r.Nudos)[1]
 end
 #Generar una red igual salvo inversión de un spin aleatorio
@@ -203,10 +200,10 @@ function bucle_simulacion(red_inicial::Red, pasos_de_MC::Int64, guardar_cada::In
     return datos
 end
 
-function local_correlation(red::Red, x::Integer, y::Integer, r::Integer)
-    my_spin = red.Nudos[x, y].val
-    N = size(red)
+function local_correlation(datos::Vector{Red}, x::Integer, y::Integer, r::Integer)
+    length_of_sim = size(datos, 1)
     traslations = [(r, 0), (-r, 0), (0, r), (0, -r)]
+    N = size(datos[1])
 
     #Hacemos equivalentes los spines 0 y N - Condiciones periódicas
     function wrap(i)
@@ -217,18 +214,28 @@ function local_correlation(red::Red, x::Integer, y::Integer, r::Integer)
         end
         return i
     end
-
-    other_positions = [(wrap(x + tx), wrap(y + ty)) for (tx, ty) in traslations]
-
-    return sum([ my_spin * red.Nudos[other_x, other_y].val for (other_x, other_y) in other_positions]) / 4
+    
+    suma = 0.0
+    for r in datos
+        my_spin = r.Nudos[x, y].val
+        other_positions = [(wrap(x + tx), wrap(y + ty)) for (tx, ty) in traslations]
+        suma = sum([ my_spin * r.Nudos[other_x, other_y].val for (other_x, other_y) in other_positions]) / 4
+    end
+    return suma / length_of_sim
 end
 
-function global_correlation(red::Red, r::Integer)
-    N = size(red)
+function global_correlation(red::Vector{Red}, r::Integer)
+    N = size(red[1])
     suma = 0.0
     for i in 1:N, j in 1:N
         suma += local_correlation(red, i, j, r)
     end
 
     return suma / N^2
+end
+
+function calcular_correlacion(datos::Vector{Red})::Vector{Point2f}
+    max_val = ceil(Int64, size(datos[1])/2)
+    r = collect(0:max_val)
+    return Point2f[(ri, global_correlation(datos, ri)) for ri in r]
 end

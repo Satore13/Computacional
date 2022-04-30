@@ -3,25 +3,32 @@ using GLMakie
 using Serialization
 using LsqFit
 using Measurements
-function plotear_EyMvspMC(datos::Vector{Red}, guardadas_cada::Integer = 1, filename::Union{Nothing, String} = nothing)
-    N = size(datos[1])
-    T = round(digits = 5, datos[1].Temperatura)
+function plotear_EyMvspMC(datos::Vector{Vector{Red}}, colors::Vector{Symbol}; gc::Integer = 1, filename::Union{Nothing, String} = nothing)
+    if size(datos, 1) ≠ size(colors, 1)
+        error("El array de datos y de colores ha de ser del mismo tamaño")
+    end
+
     fig = Figure()
-    ax_E = Axis(fig[1, 1], xlabel = "pMC")
-    ax_M = Axis(fig[2, 1], xlabel = "pMC")
-    x = collect(1:size(datos, 1))
-    x = (x .- 1 ) .*guardadas_cada
-    yE = [energia_norm(red) for red in datos]
-    yM = [abs(magnetizacion_norm(red)) for red in datos]
-
-    lE = lines!(ax_E, x, yE, color = :red)
-    lM = lines!(ax_M, x, yM, color = :black)
-
+    ax_E = Axis(fig[1, 1], xlabel = "pMC", title = "Energía")
+    ax_M = Axis(fig[2, 1], xlabel = "pMC", title = "Magnetización")
+    plts_energia = []
+    plts_magnetizacion = []
+    labels = String[]
+    for (d, c) in zip(datos, colors)
+        N = size(d[1])
+        T = round(digits = 3, d[1].Temperatura)
+        x = collect(1:size(d, 1))
+        x = (x .- 1 ) .*gc
+        yE = [energia_norm(red) for red in d]
+        yM = [abs(magnetizacion_norm(red)) for red in d]
+        push!(plts_energia, lines!(ax_E, x, yE, color = c))
+        push!(plts_magnetizacion, lines!(ax_M, x, yM, color = c))
+        push!(labels, "T = $T, N = $N")
+    end
     ylims!(ax_M, (0 , 1))
     ylims!(ax_E, (-2, 0))
 
-    Legend(fig[:, 2], [lE, lM], ["Energía", "Magnetización"])
-    Label(fig[0, :], "Red $(N)x$(N)\t T = $(T)", textsize = 25)
+    Legend(fig[:, 2], [[plts_energia[i], plts_magnetizacion[i]] for i in eachindex(plts_energia)], labels, merge = true, unique = true)
     return fig
 end
 
@@ -40,7 +47,7 @@ function plotear_configuracion(red::Red)
     return fig
 end
 
-function plotear_configuracion_anim(datos::Vector{Red})
+function plotear_configuracion_anim(datos::Vector{Red}, filename::String = "Tarea2/sim.mp4")
     N = size(datos[1])
     datos_s = [getfield.(red.Nudos, :val) for red in datos]
     x = collect(1:N)
@@ -53,8 +60,8 @@ function plotear_configuracion_anim(datos::Vector{Red})
 
     z = @lift [datos_s[$index][i, j] for i in x, j in y]
     @lift heatmap!(ax, $z, colormap = Reverse(:greys))
-
-    record(fig, "Tarea2/sim.mp4", 1:size(datos_s, 1),framerate = 10) do i
+    @lift print(string($(index)) * "\r")
+    record(fig, filename, 1:size(datos_s, 1),framerate = 10) do i
         index[] = i
     end
 end
@@ -76,7 +83,7 @@ end
 function plotear_MvsT!(ax::Axis, label, data::Vector{Tuple{Float64, Float64, Float64}})
     x = getindex.(data, 1)
     yM = getindex.(data, 3)
-    scatter!(ax, x,  yM, label = label, color = :black)
+    scatter!(ax, x,  yM, label = label, color = :black, markersize = 5)
 end
 
 function procesar_EyMvsT(n)
@@ -122,14 +129,8 @@ function plotear_MvsTvsn()
 end
 
 
-function plotear_correlacion(red::Red)
-    max_val = ceil(Int64, size(red)/2)
-
-    r = collect(1:max_val)
-    G = [global_correlation(red, rᵢ) for rᵢ in r]
-
-    scatter(r, G)
-
+function plotear_correlacion(datos::Vector{Point2f})
+    scatter(datos)
 end
 
 function ajuste_MvsT!(ax, filename::String)
@@ -137,7 +138,7 @@ function ajuste_MvsT!(ax, filename::String)
     x = Float64[]
     y = Float64[]
     for d in data
-        if d[1] < 2.26 && d[3] > 0.8
+        if d[3] > 0.7
             push!(x, d[1])
             push!(y, d[3])
         end
@@ -164,8 +165,8 @@ function ajuste_MvsT(filename::String)
 end
 
 function plotear_ajustes()
-    filenames = "Tarea2/output/2_5to3_5_segundo/n" .* ["16", "32", "64"#=, "128"=#] .* "EyMvsT.out"
-    titles = ["16x16", "32x32", "64x64"]#, "128x128"]
+    filenames = "Tarea2/output/2_5to3_5_segundo/n" .* ["16", "32", "64", "128"] .* "EyMvsT.out"
+    titles = ["16x16", "32x32", "64x64", "128x128"]
     fig = Figure()
 
     axes = [Axis(fig[i, j]) for i in 1:2, j in 1:2]
@@ -185,7 +186,7 @@ function purgar_datos(filename::String)
     @assert typeof(data) == Vector{Tuple{Float64, Float64, Float64}}
     new_data = empty(data)
     for d in data
-        if (d[1] < 2.26) && (d[3] < 0.6)
+        if (d[1] < 2.26) && (d[3] < 0.65)
             continue
         end
         push!(new_data, d)
