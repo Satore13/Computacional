@@ -219,7 +219,7 @@ function local_correlation(datos::Vector{Red}, x::Integer, y::Integer, r::Intege
     for r in datos
         my_spin = r.Nudos[x, y].val
         other_positions = [(wrap(x + tx), wrap(y + ty)) for (tx, ty) in traslations]
-        suma = sum([ my_spin * r.Nudos[other_x, other_y].val for (other_x, other_y) in other_positions]) / 4
+        suma += sum([ my_spin * r.Nudos[other_x, other_y].val for (other_x, other_y) in other_positions]) / 4
     end
     return suma / length_of_sim
 end
@@ -237,5 +237,5 @@ end
 function calcular_correlacion(datos::Vector{Red})::Vector{Point2f}
     max_val = ceil(Int64, size(datos[1])/2)
     r = collect(0:max_val)
-    return Point2f[(ri, global_correlation(datos, ri)) for ri in r]
+    return [(ri, global_correlation(datos, ri)) for ri in r]
 end
