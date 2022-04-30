@@ -25,7 +25,7 @@ function plotear_anim(sim::Simulation, filename::String="Tarea3/videos/sim.mp4")
 
     fig = Figure()
 
-    ax_wf = Axis(fig[1, 1:3], xlabel = "x")
+    ax_wf = Axis(fig[1, 1:3], xlabel = "x", yaxisposition = :left)
     ax_potential = Axis(fig[1, 1:3], yaxisposition = :right)
     hidespines!(ax_potential)
     hidexdecorations!(ax_potential)
@@ -66,7 +66,7 @@ function plotear_anim(sim::Simulation, filename::String="Tarea3/videos/sim.mp4")
     Legend(fig[3, 4], ax_momentum)
 
 
-    record(fig, filename, eachindex(sim.φn),framerate = 30) do i
+    record(fig, filename, eachindex(sim.φn),framerate = 20) do i
         index[] = i
         norm_dots[] = push!(norm_dots[], Point2f(i, norm(sim.φn[i])))
         momentum_dots[] = push!(momentum_dots[], Point2f(i, mean_value(sim.φn[i], momentum_op)))
