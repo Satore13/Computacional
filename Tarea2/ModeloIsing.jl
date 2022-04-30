@@ -234,7 +234,7 @@ function global_correlation(red::Vector{Red}, r::Integer)
     return suma / N^2
 end
 
-function calcular_correlacion(datos::Vector{Red})::Vector{Point2f}
+function calcular_correlacion(datos::Vector{Red})::Vector{NTuple{2, Float64}}
     max_val = ceil(Int64, size(datos[1])/2)
     r = collect(0:max_val)
     return [(ri, global_correlation(datos, ri)) for ri in r]
