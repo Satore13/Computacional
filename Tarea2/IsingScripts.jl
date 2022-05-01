@@ -129,8 +129,34 @@ function plotear_MvsTvsn()
 end
 
 
-function plotear_correlacion(datos::Vector{Point2f})
-    scatter(datos)
+function plotear_correlacion(datos::Vector{Vector{NTuple{2, Float64}}}, labels::Vector{String})
+    fig = Figure()
+    ax = Axis(fig[1, 1])
+    for (d, l) in zip(datos, labels)
+        scatter!(ax, d, label = l)
+        lines!(ax, d, label = l)
+        ylims!(ax, (0,1.1))
+    end
+    Legend(fig[:, 2], ax, merge = true, unique = true)
+    fig
+end
+
+function plotear_correlacion(datos::Vector{NTuple{2, Float64}}, label::String)
+    plotear_correlacion([datos], [label])
+end
+
+function plotear_correlaciones(N::Int64)
+    N = string(N)
+    labels = String[]
+    datos = Vector{NTuple{2, Float64}}[]
+
+    for t in 1.5:0.2:3.5#[1.5:0.2:3.5 ; 2.269]
+        t = string(round(t, digits = 3))
+        filename = "Tarea2/output/f_corr/f_corr_n$(N)T$(t).out"
+        push!(labels, "T = $(t)")
+        push!(datos, deserialize(filename))
+    end
+    plotear_correlacion(datos, labels)
 end
 
 function ajuste_MvsT!(ax, filename::String)
