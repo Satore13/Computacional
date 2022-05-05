@@ -251,5 +251,5 @@ function calor_especifico(datos::Vector{Red})::Float64
         mean_energysq += energia_norm(r)^2 / number_of_states
     end
     mean_energy_and_then_sq  = mean_energy ^ 2
-    return (mean_energysq - mean_energy_and_then_sq) / (N^2*T)
+    return (mean_energysq - mean_energy_and_then_sq) / T
 end
