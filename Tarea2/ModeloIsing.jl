@@ -75,6 +75,30 @@ function energia_norm(r::Red)::Float64
     return -0.5 * sum(elms) / size(r)^2 
 end
 
+function energia(r::Red)::Float64
+    #Conseguimos la matriz de spines y el tamaño de la red
+    s = getfield.(r.Nudos, :val)
+    N = size(r)
+
+    #Hacemos equivalentes los spines 0 y N - Condiciones periódicas
+    function wrap(i)
+        if i > N
+            i -= N
+        elseif i < 1
+            i += N
+        end
+        return i
+    end
+    #Elementos de la sumatoria
+    elms = [ 
+        begin
+            s[i, j] * (s[i, wrap(j + 1)] + s[i, wrap(j - 1)] + s[wrap(i + 1), j] + s[wrap(i - 1), j])
+        end
+        for i = 1:N, j in 1:N]
+
+
+    return -0.5 * sum(elms)
+end
 function Δenergia(from::Red, to::Red)
     #Conseguimos la matriz de spines y el tamaño de la red
     to_s = getfield.(to.Nudos, :val)
@@ -247,9 +271,9 @@ function calor_especifico(datos::Vector{Red})::Float64
     mean_energy = 0.0
     mean_energysq = 0.0
     for r in datos
-        mean_energy += energia_norm(r) / number_of_states
-        mean_energysq += energia_norm(r)^2 / number_of_states
+        mean_energy += energia(r) / number_of_states
+        mean_energysq += energia(r)^2 / number_of_states
     end
     mean_energy_and_then_sq  = mean_energy ^ 2
-    return (mean_energysq - mean_energy_and_then_sq) / T
+    return (mean_energysq - mean_energy_and_then_sq) / (N*T)^2
 end
