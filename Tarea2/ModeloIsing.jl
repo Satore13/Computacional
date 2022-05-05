@@ -239,3 +239,17 @@ function calcular_correlacion(datos::Vector{Red})::Vector{NTuple{2, Float64}}
     r = collect(0:max_val)
     return [(ri, global_correlation(datos, ri)) for ri in r]
 end
+
+function calor_especifico(datos::Vector{Red})::Float64
+    number_of_states = size(datos, 1)
+    T = datos[1].Temperatura
+    mean_energy = 0.0
+    mean_energysq = 0.0
+    for r in datos
+        mean_energy += energia_norm(r)
+        mean_energysq += energia_norm(r)
+    end
+    mean_energy_and_then_sq  = (mean_energy / number_of_states)^2
+    mean_energysq = mean_energysq / number_of_states^2
+    return (1/T) * (mean_energysq - mean_energy_and_then_sq)
+end

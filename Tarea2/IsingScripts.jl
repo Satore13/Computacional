@@ -252,3 +252,7 @@ function purgar_datos(filename::String)
     end
     serialize(filename, new_data)
 end
+
+function plotear_calores_especificos()
+    
+end
