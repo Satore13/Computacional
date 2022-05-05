@@ -246,10 +246,9 @@ function calor_especifico(datos::Vector{Red})::Float64
     mean_energy = 0.0
     mean_energysq = 0.0
     for r in datos
-        mean_energy += energia_norm(r)
-        mean_energysq += energia_norm(r)^2
+        mean_energy += energia_norm(r) / number_of_states
+        mean_energysq += energia_norm(r)^2 / number_of_states
     end
-    mean_energy_and_then_sq  = (mean_energy / number_of_states)^2
-    mean_energysq = mean_energysq / number_of_states^2
-    return (1/T) * (mean_energysq - mean_energy_and_then_sq)
+    mean_energy_and_then_sq  = mean_energy ^ 2
+    return (mean_energysq - mean_energy_and_then_sq) / (N^2*T)
 end
