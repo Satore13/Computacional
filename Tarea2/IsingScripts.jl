@@ -146,17 +146,50 @@ function plotear_correlacion(datos::Vector{NTuple{2, Float64}}, label::String)
 end
 
 function plotear_correlaciones(N::Int64)
-    N = string(N)
     labels = String[]
     datos = Vector{NTuple{2, Float64}}[]
-
-    for t in 1.5:0.2:3.5#[1.5:0.2:3.5 ; 2.269]
+    temperaturas = [1.1:0.2:2.7 ; Dict(16 => 2.313, 32 => 2.290, 64 => 2.280, 128 => 2.269)[N]]
+    N = string(N)
+    for t in temperaturas
         t = string(round(t, digits = 3))
         filename = "Tarea2/output/f_corr/f_corr_n$(N)T$(t).out"
         push!(labels, "T = $(t)")
         push!(datos, deserialize(filename))
     end
     plotear_correlacion(datos, labels)
+end
+
+function ajuste_funcion_correlacion(datos::Vector{NTuple{2, Float64}})
+    @. model(x, p) = exp(-x / p[1]) + p[2]
+
+    x = getindex.(datos, 1)
+    y = getindex.(datos, 2)
+    p0 = [1.0, 0.0]
+
+    fit = curve_fit(model, x, y, p0)
+    return (coef(fit)[1], stderror(fit)[1])
+end
+
+function plotear_l_corr_vs_temp()
+    fig = Figure()
+    ax = Axis(fig[1, 1])
+    for (n, Tc, c, l) in zip([32, 64, 128], [2.290, 2.280, 2.269], [:blue, :orange, :red], ["32x32", "64x64", "128x128"])
+        ξvsT = NTuple{3, Float64}[]
+        for t in sort([1.3:0.2:3.5; Tc])
+            filename = "Tarea2/output/f_corr/f_corr_n$(n)T$(t).out"
+            datos = deserialize(filename)
+            output = ajuste_funcion_correlacion(datos)
+            push!(ξvsT, (t, output...))
+        end
+        x = getindex.(ξvsT, 1)
+        y = getindex.(ξvsT, 2)
+        dy = getindex.(ξvsT, 3)
+        errorbars!(ax, x, y, dy)
+        #scatter!(ax, x, y)
+        lines!(ax, x, y, color = c, label = l)
+    end
+    axislegend(ax)
+    return fig
 end
 
 function ajuste_MvsT!(ax, filename::String)
