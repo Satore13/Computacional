@@ -243,6 +243,7 @@ end
 function calor_especifico(datos::Vector{Red})::Float64
     number_of_states = size(datos, 1)
     T = datos[1].Temperatura
+    N = size(datos[1])
     mean_energy = 0.0
     mean_energysq = 0.0
     for r in datos
