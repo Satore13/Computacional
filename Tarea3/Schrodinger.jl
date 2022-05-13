@@ -140,7 +140,7 @@ function calcular_χn(N::Int64, A::Vector0{ComplexF64}, bn::Vector0{ComplexF64},
     return χ
 end
 
-function generar_simulacion(N, n_ciclos, x0 = N/4, σ = N/16, choice_of_potential::Symbol = :none, Λ::Vector = [])::Simulation
+function generar_simulacion(N, n_ciclos, x0 = N/4, σ = N/16, choice_of_potential::Symbol = :none, Λ::Vector = [], φi::Union{WaveFunction, Nothing} = nothing)::Simulation
     #Valores independientes del tiempo
     k0 = 2π * n_ciclos / N
     if choice_of_potential == :none
@@ -157,7 +157,9 @@ function generar_simulacion(N, n_ciclos, x0 = N/4, σ = N/16, choice_of_potentia
     end
     
     #Calcular configuraciones iniciales
-    φ0 = generar_onda_gaussiana(x0, k0, σ, N)
+    if isnothing(φi)
+        φ0 = generar_onda_gaussiana(x0, k0, σ, N)
+    end
     s = 1/(4*abs2(k0))
     @show s
     A = calcular_A(V, s)
