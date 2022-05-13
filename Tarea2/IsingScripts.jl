@@ -254,5 +254,51 @@ function purgar_datos(filename::String)
 end
 
 function plotear_calores_especificos()
+    fig = Figure()
+    ax = Axis(fig[1, 1])
+    Ns = [16, 32, 64, 128]
+    xlims!(ax, (2.0, 3.0))
+    ylims!(ax, (0.0, 5.0))
+    for (n, c, tc) in zip(Ns, [:blue, :red, :green, :black], [2.313, 2.290, 2.280, 2.269])
+        filename = "Tarea2/output/calor_especifico/ct_n$(n)2to3.out"
+        data = deserialize(filename)
+        x = getindex.(data, 1)
+        y = getindex.(data, 2)
+        scatter!(ax, x, y, color = c, label = "$(n)x$(n)")
+        lines!(ax, x, y, color = c, label = "$(n)x$(n)")
+        vlines!(ax, tc, color = c, label = "$(n)x$(n)")
+    end
+    axislegend(ax, merge = true)
+    return fig
+end
+
+function plotear_tc_vs_L()
+    T_c = [2.313, 2.290, 2.280, 2.269] 
+    wt = [0.006, 0.002, 0.003, 0.002] .^ -2
+    L = [16, 32, 64, 128] 
     
+    @. model(x, p) = 1/p[1] - p[2] * x 
+ 
+    p0 = [2.0, 1.0]
+
+    x = L .^ -1
+    y = T_c .^ -1
+
+    @show x
+    @show y
+    @show wt
+    fit = curve_fit(model, x, y,wt,   p0)
+
+    @show coef(fit) .± stderror(fit)
+
+    ax = Axis(Figure()[1, 1], ylabel = L"T_c^{-1}", xlabel = L"N^{-1}")
+
+    scatter!(ax, x, y)
+    
+    x = collect(range(x[begin], x[end], length = 10))
+    y = model(x, coef(fit))
+    @show x 
+    @show y
+    lines!(ax, x, y)
+    current_figure()
 end
