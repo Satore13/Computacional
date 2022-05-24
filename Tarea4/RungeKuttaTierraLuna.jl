@@ -30,7 +30,7 @@ end
 
 #Velocidad de escape ≈ 11_190 m /s
 #La velocidad inicial se espera en m/s y los ángulos en grados
-function run(;ρ0::Float64 = radio_tierra, v0::Float64, θ::Float64, φ::Float64, length::Float64, time_scale::Float64, h::Float64 = 1.0, fps = 30.0)
+function run(;ρ0::Float64 = radio_tierra, v0::Float64, θ::Float64, φ::Float64, length::Float64, time_scale::Float64, h0::Float64 = 0.1, fps = 30.0)
     v_norm = v0 / distancia_tierra_luna
 
     #Momento lineal inicial en la coordenada polar (en coordenadas normalizadas)
@@ -42,13 +42,13 @@ function run(;ρ0::Float64 = radio_tierra, v0::Float64, θ::Float64, φ::Float64
     p_φ0 = ρ_norm * v_norm * sind(θ - φ)
 
     y0 = [ρ0 / distancia_tierra_luna, deg2rad(φ) , p_ρ0, p_φ0]
-    s = Simulation([:ρ, :φ, :pρ, :pφ], y0, dyn, h, fps, time_scale = time_scale)
-    loop!(s, length)
+    s = Simulation([:ρ, :φ, :pρ, :pφ], y0, dyn, fps, time_scale = time_scale)
+    loop!(s, length, h0)
     return s
 end
 
 #Algunos ejemplos
-run_orbita_geosincrona() = run(ρ0 = 35_786_000.0+radio_tierra, v0 = 3_070.0, φ = 90.0, θ = 0.0, length = 48.0, time_scale = 3600.0, h = 1.0)
+run_orbita_geosincrona() = run(ρ0 = 35_786_000.0+radio_tierra, v0 = 3_070.0, φ = 90.0, θ = 0.0, length = 48.0, time_scale = 3600.0)
 
 
 function animar_simulacion(sim::Simulation, filename::String = "out.mp4")

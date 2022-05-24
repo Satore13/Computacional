@@ -10,10 +10,9 @@ struct Simulation
     header::Vector{Symbol}
     video::Vector{Frame}
     dyn::Function
-    h::Float64
     fps::Float64
     time_scale::Float64
-    function Simulation(header::Vector{Symbol}, in_cond::Vector{Float64}, dyn::Function, h::Float64, fps::Float64; time_scale = 1.0)
+    function Simulation(header::Vector{Symbol}, in_cond::Vector{Float64}, dyn::Function, fps::Float64; time_scale = 1.0)
         if length(header) != length(in_cond)
             error("El cabecero y las condiciones iniciales han de tener la misma longitud")
         end
@@ -26,7 +25,7 @@ struct Simulation
         end
         initial_frame = Frame(0.0, in_cond)
         
-        return new(header, Frame[initial_frame], dyn, h, fps, time_scale)
+        return new(header, Frame[initial_frame], dyn, fps, time_scale)
     end
 end
 
@@ -47,27 +46,55 @@ function stepFrame(f::Frame, foo::Function, h::Float64)
     return Frame(t+ h, y .+ (1.0/6.0) .* (k[1] .+ 2 .*k[2] .+ 2 .*k[3] .+ k[4]))
 end
 
-function loop!(s::Simulation, length::Float64)
-    length = length * s.time_scale
-    initial_time = last(s.video).time
+function loop!(sim::Simulation, length::Float64, h0::Float64)
+    length = length * sim.time_scale
+    initial_time = last(sim.video).time
     final_time = initial_time + length
     @show final_time
     current_time = initial_time
     last_saved_frame = initial_time
-    time_between_frames = s.fps^-1 * s.time_scale
-
-    current_frame = last(s.video)
+    time_between_frames = sim.fps^-1 * sim.time_scale
+    
+    current_frame = last(sim.video)
     last_percentage = 0.0
 
+    h = h0
+    #El error que toleraremos será ε = h^5
+    ε_tolerado = h0^5
     #Ejecutamos el bucle mientas que estemos por detrás del fin del tiempo que nos piden simular
     while current_time < final_time
-        #Simulamos un frame con el paso que venga determinado por la simulación
-        current_frame = stepFrame(current_frame, s.dyn, s.h)
+        #Este bucle se ejecutará hasta que tengamos un paso apropiado
+        while true
+            #Primero tenemos que simular un paso con el h dado
+            current_frame_with_current_h = stepFrame(current_frame, sim.dyn, h)
+            #y otro con el h medios
+            current_frame_with_halved_h = stepFrame(current_frame, sim.dyn, h / 2.0)
+
+            #Obtenemos el mayor error entre todas las coordenadas de y calculado con h y de y calculado con h medios
+            ε = maximum([ 16.0/15.0 * abs(y_h - y_h_halved) for (y_h, y_h_halved) in zip( current_frame_with_current_h.y, current_frame_with_halved_h.y)])
+
+            s = max((ε / ε_tolerado)^0.2, 1e-8)
+            h_max = h/s
+
+            #Si h < h_max hemos calculado todo con más precisión de la necesaria con lo que duplicamos su valor
+            if h < h_max
+                h = 2 * h
+                current_frame = current_frame_with_current_h
+                break
+            end
+            if s < 2
+                current_frame = current_frame_with_halved_h
+                break
+            end
+            #Si s > 2 ninguno de los dos cálculos es lo suficientemente preciso así que hay que recalcular todo con h = h_max
+            h = h_max
+        end
+
         #Guardamos el tiempo del frame más nuevo
         current_time = current_frame.time
         #Sólo guardamos un frame cuando vemos que hay una distancia superior a la que estipulamos que hemos de tener para tener los fps pedidos
         if current_time - last_saved_frame > time_between_frames
-            pushFrame!(s, current_frame)
+            pushFrame!(sim, current_frame)
             last_saved_frame = current_time
         end
 
