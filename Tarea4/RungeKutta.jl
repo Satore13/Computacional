@@ -12,20 +12,17 @@ struct Simulation
     dyn::Function
     fps::Float64
     time_scale::Float64
-    function Simulation(header::Vector{Symbol}, in_cond::Vector{Float64}, dyn::Function, fps::Float64; time_scale = 1.0)
+    parameters::Dict{Symbol, Float64}
+    function Simulation(header::Vector{Symbol}, in_cond::Vector{Float64}, dyn::Function, fps::Float64; time_scale = 1.0, parameters = Dict{Symbol, Float64})
         if length(header) != length(in_cond)
             error("El cabecero y las condiciones iniciales han de tener la misma longitud")
         end
-        try 
-            y = dyn(in_cond, 0.0)
-            length(y) != length(in_cond) && error("La función no devuelve un vector válido")
+        y = dyn(in_cond, 0.0, parameters)
+        length(y) != length(in_cond) && error("La función no devuelve un vector válido")
 
-        catch e
-            println("Error al comprobar la función: ", e)
-        end
         initial_frame = Frame(0.0, in_cond)
         
-        return new(header, Frame[initial_frame], dyn, fps, time_scale)
+        return new(header, Frame[initial_frame], dyn, fps, time_scale, parameters)
     end
 end
 
@@ -34,14 +31,15 @@ function pushFrame!(s::Simulation, f::Frame)
     push!(s.video, f)
 end
 
-function stepFrame(f::Frame, foo::Function, h::Float64)
+function stepFrame(f::Frame, foo::Function, h::Float64, parameters)
     y = f.y
     t = f.time
     k = Vector{Vector{Float64}}(undef, 4)
-    k[1] = h .* foo(y, t)
-    k[2] = h .* foo(y .+ 0.5 .* k[1], t + 0.5 * h)
-    k[3] = h .* foo(y .+ 0.5 .* k[2], t + 0.5 * h)
-    k[4] = h .* foo(y .+ k[3], t + h)
+
+    k[1] = h .* foo(y, t, parameters)
+    k[2] = h .* foo(y .+ 0.5 .* k[1], t + 0.5 * h, parameters)
+    k[3] = h .* foo(y .+ 0.5 .* k[2], t + 0.5 * h, parameters)
+    k[4] = h .* foo(y .+ k[3], t + h, parameters)
 
     return Frame(t+ h, y .+ (1.0/6.0) .* (k[1] .+ 2 .*k[2] .+ 2 .*k[3] .+ k[4]))
 end
@@ -66,9 +64,9 @@ function loop!(sim::Simulation, length::Float64, h0::Float64)
         #Este bucle se ejecutará hasta que tengamos un paso apropiado
         while true
             #Primero tenemos que simular un paso con el h dado
-            current_frame_with_current_h = stepFrame(current_frame, sim.dyn, h)
+            current_frame_with_current_h = stepFrame(current_frame, sim.dyn, h, sim.parameters)
             #y otro con el h medios
-            current_frame_with_halved_h = stepFrame(current_frame, sim.dyn, h / 2.0)
+            current_frame_with_halved_h = stepFrame(current_frame, sim.dyn, h / 2.0, sim.parameters)
 
             #Obtenemos el mayor error entre todas las coordenadas de y calculado con h y de y calculado con h medios
             ε = maximum([ 16.0/15.0 * abs(y_h - y_h_halved) for (y_h, y_h_halved) in zip( current_frame_with_current_h.y, current_frame_with_halved_h.y)])
