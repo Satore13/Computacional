@@ -59,8 +59,10 @@ function animar_simulacion(sim::Simulation, filename::String = "out.mp4")
     ylims!(ax, (-side * 1.2, side * 1.2))
 
     @show sim.fps
+    @show sim.video[end].time
     record(fig, filename, eachindex(sim.video), framerate = Int64(sim.fps)) do i
         current_frame = sim.video[i]
+        @show current_frame.time
         r1[], r2[] = r1r2_de_polares(current_frame, sim.parameters)
     end
 end
