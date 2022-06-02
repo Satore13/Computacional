@@ -98,7 +98,8 @@ function loop!(sim::Simulation, length::Float64, h0::Float64)
         #Algoritmo para imprimir el porcentaje de progreso
         current_percentage = (current_time - initial_time) / length * 100.0
         if current_percentage - last_percentage > 0.1
-            print("Progreso: $(round(current_percentage, digits = 2))%, paso = $h\r")
+            print("Progreso: $(round(current_percentage, digits = 2))%\r")
+            last_percentage = current_percentage
         end
 
     end
