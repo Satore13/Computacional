@@ -1,5 +1,5 @@
 include("RungeKutta.jl")
-using GLMakie
+using Serialization
 
 function dyn(y, t, parameters)
     #En orden θ1, θ2, p1, p2 = y1, y2, y3, y4
