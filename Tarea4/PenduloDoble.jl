@@ -39,30 +39,20 @@ function r1r2_de_polares(frame::Frame, parameters)
     return Point2f(x1, y1), Point2f(x2, y2)
 end
 
-function animar_simulacion(sim::Simulation, filename::String = "out.mp4")
-    filename = "Tarea4/videosPD/" * filename
-
-
-
-    r1 = Observable{Point2f}(r1r2_de_polares(sim.video[1], sim.parameters)[1])
-    r2 = Observable{Point2f}(r1r2_de_polares(sim.video[1], sim.parameters)[2])
-    cuerdas = @lift [Point2f(0.0, 0.0), $r1, $r2]
-
-    fig = Figure()
-    ax = Axis(fig[1, 1], aspect = 1)
-    scatter!(ax, r1, color = :black)
-    scatter!(ax, r2, color = :black)
-    lines!(ax, cuerdas, color = :black)
-
-    side = sim.parameters[:l1] + sim.parameters[:l2]
-    xlims!(ax, (-side * 1.2, side * 1.2))
-    ylims!(ax, (-side * 1.2, side * 1.2))
-
-    @show sim.fps
-    @show sim.video[end].time
-    record(fig, filename, eachindex(sim.video), framerate = Int64(sim.fps)) do i
-        current_frame = sim.video[i]
-        @show current_frame.time
-        r1[], r2[] = r1r2_de_polares(current_frame, sim.parameters)
+function ejecutar_simulaciones_similares()
+    θ_range = range(start = π/4, stop = 3*π/4, length = 100)
+    for (index, θ_inicial) in enumerate(θ_range)
+        filename = "Tarea4/outputPD/simulacion_liap$index.out"
+        sim = crear_simulacion(θ1 = θ_inicial, θ2 = θ_inicial)
+        println("Ejecutando simulación número $index con θ inicial $(round(θ_inicial, digits = 6))")
+        loop!(sim, 1000.0, 0.1)
+        serialize(filename, sim)
+        #Ahora ejecutamos con valores iniciales muy próximos
+        
+        filename = "Tarea4/outputPD/simulacion_liap$(index)alter.out"
+        sim = crear_simulacion(θ1 = θ_inicial + 1e-6 , θ2 = θ_inicial + 1e-6)
+        println("Ejecutando simulación número $index con θ inicial $(round(θ_inicial + 1e-6, digits = 6))")
+        loop!(sim, 1000.0, 0.1)
+        serialize(filename, sim)
     end
 end

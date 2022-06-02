@@ -87,7 +87,6 @@ function loop!(sim::Simulation, length::Float64, h0::Float64)
             #Si s > 2 ninguno de los dos cálculos es lo suficientemente preciso así que hay que recalcular todo con h = h_max
             h = h_max
         end
-
         #Guardamos el tiempo del frame más nuevo
         current_time = current_frame.time
         #Sólo guardamos un frame cuando vemos que hay una distancia superior a la que estipulamos que hemos de tener para tener los fps pedidos
@@ -98,8 +97,8 @@ function loop!(sim::Simulation, length::Float64, h0::Float64)
 
         #Algoritmo para imprimir el porcentaje de progreso
         current_percentage = (current_time - initial_time) / length * 100.0
-        if current_percentage - last_percentage > 0.5
-            print("Progreso: $(round(current_percentage, digits = 2))%\r")
+        if current_percentage - last_percentage > 0.1
+            print("Progreso: $(round(current_percentage, digits = 2))%, paso = $h\r")
         end
 
     end
