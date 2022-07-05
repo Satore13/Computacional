@@ -13,7 +13,8 @@ struct Simulation
     fps::Float64
     time_scale::Float64
     parameters::Dict{Symbol, Float64}
-    function Simulation(header::Vector{Symbol}, in_cond::Vector{Float64}, dyn::Function, fps::Float64; time_scale = 1.0, parameters = Dict{Symbol, Float64})
+    h::Float64
+    function Simulation(header::Vector{Symbol}, in_cond::Vector{Float64}, dyn::Function, fps::Float64; time_scale = 1.0, parameters = Dict{Symbol, Float64}, h::Float64)
         if length(header) != length(in_cond)
             error("El cabecero y las condiciones iniciales han de tener la misma longitud")
         end
@@ -22,7 +23,7 @@ struct Simulation
 
         initial_frame = Frame(0.0, in_cond)
         
-        return new(header, Frame[initial_frame], dyn, fps, time_scale, parameters)
+        return new(header, Frame[initial_frame], dyn, fps, time_scale, parameters, h)
     end
 end
 
@@ -44,11 +45,83 @@ function stepFrame(f::Frame, foo::Function, h::Float64, parameters)
     return Frame(t+ h, y .+ (1.0/6.0) .* (k[1] .+ 2 .*k[2] .+ 2 .*k[3] .+ k[4]))
 end
 
-function loop!(sim::Simulation, length::Float64, h0::Float64)
+function loopfxts!(s::Simulation, length::Float64)
+    length = length * s.time_scale
+    initial_time = last(s.video).time
+    final_time = initial_time + length
+    @show final_time
+    current_time = initial_time
+    last_saved_frame = initial_time
+    time_between_frames = s.fps^-1 * s.time_scale
+
+    current_frame = last(s.video)
+    last_percentage = 0.0
+
+    println("Paso temporal = $(s.h)")
+    #Ejecutamos el bucle mientas que estemos por detrás del fin del tiempo que nos piden simular
+    while current_time < final_time
+        #Simulamos un frame con el paso que venga determinado por la simulación
+        current_frame = stepFrame(current_frame, s.dyn, s.h, s.parameters)
+        #Guardamos el tiempo del frame más nuevo
+        current_time = current_frame.time
+        #Sólo guardamos un frame cuando vemos que hay una distancia superior a la que estipulamos que hemos de tener para tener los fps pedidos
+        if current_time - last_saved_frame > time_between_frames
+            pushFrame!(s, current_frame)
+            last_saved_frame = current_time
+        end
+
+        #Algoritmo para imprimir el porcentaje de progreso
+        current_percentage = (current_time - initial_time) / length * 100.0
+        if current_percentage - last_percentage > 0.1
+            print("Progreso: $(round(current_percentage, digits = 2))%\r")
+            last_percentage = current_percentage
+        end
+
+    end
+    return nothing
+end
+function loopfxts!(s::Simulation, u!::Function, length::Float64)
+    length = length * s.time_scale
+    initial_time = last(s.video).time
+    final_time = initial_time + length
+    @show final_time
+    current_time = initial_time
+    last_saved_frame = initial_time
+    time_between_frames = s.fps^-1 * s.time_scale
+
+    current_frame = last(s.video)
+    last_percentage = 0.0
+
+    println("Paso temporal = $(s.h)")
+    #Ejecutamos el bucle mientas que estemos por detrás del fin del tiempo que nos piden simular
+    while current_time < final_time
+        #Simulamos un frame con el paso que venga determinado por la simulación
+        current_frame = stepFrame(current_frame, s.dyn, s.h, s.parameters)
+        u!(current_frame, s.parameters)
+        #Guardamos el tiempo del frame más nuevo
+        current_time = current_frame.time
+        #Sólo guardamos un frame cuando vemos que hay una distancia superior a la que estipulamos que hemos de tener para tener los fps pedidos
+        if current_time - last_saved_frame > time_between_frames
+            pushFrame!(s, current_frame)
+            last_saved_frame = current_time
+        end
+
+        #Algoritmo para imprimir el porcentaje de progreso
+        current_percentage = (current_time - initial_time) / length * 100.0
+        if current_percentage - last_percentage > 0.1
+            print("Progreso: $(round(current_percentage, digits = 2))%\r")
+            last_percentage = current_percentage
+        end
+
+    end
+    return nothing
+end
+function loop!(sim::Simulation, length::Float64)
     length = length * sim.time_scale
     initial_time = last(sim.video).time
     final_time = initial_time + length
     @show final_time
+    @show sim.h
     current_time = initial_time
     last_saved_frame = initial_time
     time_between_frames = sim.fps^-1 * sim.time_scale
@@ -56,9 +129,9 @@ function loop!(sim::Simulation, length::Float64, h0::Float64)
     current_frame = last(sim.video)
     last_percentage = 0.0
 
-    h = h0
+    h = sim.h
     #El error que toleraremos será ε = h^5
-    ε_tolerado = h0^5
+    ε_tolerado = sim.h
     #Ejecutamos el bucle mientas que estemos por detrás del fin del tiempo que nos piden simular
     while current_time < final_time
         #Este bucle se ejecutará hasta que tengamos un paso apropiado
@@ -74,18 +147,23 @@ function loop!(sim::Simulation, length::Float64, h0::Float64)
             s = max((ε / ε_tolerado)^0.2, 1e-8)
             h_max = h/s
 
+            #Si s > 2 ninguno de los dos cálculos es lo suficientemente preciso así que hay que recalcular todo con h = h_max
+            if s > 2 
+                h = h_max
+                continue
+            end
+            if s < 2
+                current_frame = current_frame_with_halved_h
+                break
+            end
+
             #Si h < h_max hemos calculado todo con más precisión de la necesaria con lo que duplicamos su valor
             if h < h_max
                 h = 2 * h
                 current_frame = current_frame_with_current_h
                 break
             end
-            if s < 2
-                current_frame = current_frame_with_halved_h
-                break
-            end
-            #Si s > 2 ninguno de los dos cálculos es lo suficientemente preciso así que hay que recalcular todo con h = h_max
-            h = h_max
+           
         end
         #Guardamos el tiempo del frame más nuevo
         current_time = current_frame.time
@@ -97,8 +175,9 @@ function loop!(sim::Simulation, length::Float64, h0::Float64)
 
         #Algoritmo para imprimir el porcentaje de progreso
         current_percentage = (current_time - initial_time) / length * 100.0
-        if current_percentage - last_percentage > 0.1
-            print("Progreso: $(round(current_percentage, digits = 2))%\r")
+        if current_percentage - last_percentage > 0#.1
+            println("Progreso: $(round(current_percentage, digits = 2))%")
+            print("$(h) \033[A \r")
             last_percentage = current_percentage
         end
 
