@@ -1,5 +1,7 @@
 include("RungeKutta.jl")
 using Serialization
+using ForwardDiff
+using GeometryBasics
 
 function dyn(y, t, parameters)
     #En orden θ1, θ2, p1, p2 = y1, y2, y3, y4
@@ -29,7 +31,7 @@ function dyn(y, t, parameters)
     return y_
 end
 
-function crear_simulacion(;θ1::Float64, θ2::Float64, l1::Float64 = 1.0, l2::Float64 = 1.0, m1::Float64 = 1.0, m2::Float64 = 1.0, g::Float64 = 10.0, h::Float64 = 1e-4, fps::Float64 = 30)
+function crear_simulacion(;θ1::Float64, θ2::Float64, l1::Float64 = 1.0, l2::Float64 = 1.0, m1::Float64 = 1.0, m2::Float64 = 1.0, g::Float64 = 10.0, h::Float64 = 1e-4, fps::Float64 = 30.0)
     Simulation([:θ1, :θ2, :p1, :p2], [θ1, θ2, 0.0, 0.0], dyn, fps, parameters = Dict([:m1 => m1, :m2 => m2, :l1 => l1, :l2 => l2, :g => g]), h = h)
 end
 
@@ -97,7 +99,139 @@ function energia(f::Frame, p::Dict)
     return  a / b - c  +  (m1 + m2) * g*l1 + m2 *g*l2
 end
 
+function angles_velocity(f::Frame, parameters::Dict)
+    y = f.y
+    θ1 = y[1]
+    θ2 = y[2]
+    p1 = y[3]
+    p2 = y[4]
+    l1 = parameters[:l1]
+    l2 = parameters[:l2]
+    m1 = parameters[:m1]
+    m2 = parameters[:m2]
+    g = parameters[:g]
+    
+    
+    vθ1 = (l2*y[3] - l1*y[4]*cos(y[1] - y[2]))/ (l1^2*l2*(m1 + m2 * sin(y[1] - y[2])^2)) 
+    vθ2 = (-m2*l2*y[3]*cos(y[1] - y[2]) +(m1 + m2) *l1*y[4] ) / (m2 * l1 * l2^2 * (m1 + m2*sin(y[1] - y[2])^2))
+    
+    return (vθ1, vθ2)
+end
+function energia_1(f::Frame, parameters::Dict)
+    y = f.y
+    θ1 = y[1]
+    θ2 = y[2]
+    p1 = y[3]
+    p2 = y[4]
+    l1 = parameters[:l1]
+    l2 = parameters[:l2]
+    m1 = parameters[:m1]
+    m2 = parameters[:m2]
+    g = parameters[:g]
+    
+    
+    vθ1 = (l2*y[3] - l1*y[4]*cos(y[1] - y[2]))/ (l1^2*l2*(m1 + m2 * sin(y[1] - y[2])^2)) 
+    vθ2 = (-m2*l2*y[3]*cos(y[1] - y[2]) +(m1 + m2) *l1*y[4] ) / (m2 * l1 * l2^2 * (m1 + m2*sin(y[1] - y[2])^2))
+    
+    return 0.5 * m1 * l1^2 * vθ1^2 - m1 *g * l1 * cos(θ1)
+
+end
+
+function energia_2(f::Frame, parameters::Dict)
+    y = f.y
+    θ1 = y[1]
+    θ2 = y[2]
+    p1 = y[3]
+    p2 = y[4]
+    l1 = parameters[:l1]
+    l2 = parameters[:l2]
+    m1 = parameters[:m1]
+    m2 = parameters[:m2]
+    g = parameters[:g]
+    
+    
+    vθ1 = (l2*y[3] - l1*y[4]*cos(y[1] - y[2]))/ (l1^2*l2*(m1 + m2 * sin(y[1] - y[2])^2)) 
+    vθ2 = (-m2*l2*y[3]*cos(y[1] - y[2]) +(m1 + m2) *l1*y[4] ) / (m2 * l1 * l2^2 * (m1 + m2*sin(y[1] - y[2])^2))
+    
+    return 0.5 * m2 *  (l1^2 * vθ1^2 + l2^2 * vθ2^2 + 2 * l1 * l2 * vθ1 * vθ2 * cos(θ1 - θ2)) - m2 * g * (l1 * cos(θ1) + l2 * cos(θ2))
+
+end
+
 function wrap_angles!(frame::Frame, p::Dict{Symbol, Float64})
     frame.y[1] = mod2pi.(frame.y[1] .+ π) .- π
     frame.y[2] = mod2pi.(frame.y[2] .+ π) .- π
+end
+
+
+function batch_lyap()
+    ranges = [ 5:5:60, 65:5:120, 125:5:180]
+    
+    for (i, range) in enumerate(ranges)
+        range = collect(range)
+        @show range
+        batch = [crear_simulacion(θ1 = x, θ2 = x) for x in deg2rad.(range)]
+        ejecutar_conjunto_simulaciones(batch, "lyapunov/batch$(i).out", 2000.0)
+        println("Ejecutado batch $(i)")
+    end
+    for (i, range) in enumerate(ranges)
+        range = collect(range)
+        @show range
+        batch = [crear_simulacion(θ1 = x , θ2 = x) for x in deg2rad.(range .+ 0.001)]
+        ejecutar_conjunto_simulaciones(batch, "lyapunov/batch$(i)alter.out", 2000.0)
+        println("Ejecutado batch $(i)")
+    end
+end
+
+#https://test-sprott.physics.wisc.edu/chaos/lyapexp.htm
+function calculate_lyapunov(sim::Simulation, steps::Integer)
+    d0 = 10^-8 #Raíz cuadrada de la precisión
+
+    time_local_exp = Float64[]
+
+    trayA = sim.video[1]
+    trayB = Frame(0.0, trayA.y .+ d0 * sqrt(1/4))
+
+    diff_tray(A, B) = sqrt((A.y[1] - B.y[1]) ^ 2  + 
+                                (A.y[2] - B.y[2])^2 + 
+                                (A.y[3] - B.y[3])^2 + 
+                                (A.y[4] - B.y[4])^2)
+
+    porc_previo = 0.0
+    suma = 0.0
+    lyap_vs_time = Point2f[]
+    for i in 1:steps
+        trayA = stepFrame(trayA, sim.dyn, sim.h, sim.parameters)
+        trayB = stepFrame(trayB, sim.dyn, sim.h, sim.parameters)
+
+        d1 = diff_tray(trayA, trayB)
+        local_exp = log2(abs(d1 / d0)) / sim.h
+
+        #Actualizar trayectorias
+        By1 = trayA.y[1] + d0/d1 * (trayB.y[1] - trayA.y[1])
+        By2 = trayA.y[2] + d0/d1 * (trayB.y[2] - trayA.y[2])
+        By3 = trayA.y[3] + d0/d1 * (trayB.y[3] - trayA.y[3])
+        By4 = trayA.y[4] + d0/d1 * (trayB.y[4] - trayA.y[4])
+        trayB = Frame(trayA.time, [By1, By2, By3, By4])
+
+        suma += local_exp
+        porc_act = i / steps * 100
+        if porc_act - porc_previo >= 0.1
+            print("Porcentaje actual: $(round(porc_act, digits = 1)) -- Media actual: $(suma / i) \t\t\r")
+            push!(lyap_vs_time, Point2f(trayA.time, suma / i))
+            porc_previo = porc_act
+        end
+    end
+    print("Porcentaje actual: $(round(100.0, digits = 1)) -- Media actual: $(suma / steps) \t\t\r")
+    push!(lyap_vs_time, Point2f(trayA.time, suma / steps))
+    return lyap_vs_time
+end
+
+function batches_lyapunov()
+    for θ₀ in 5:5:175
+        x = deg2rad(θ₀)
+        sim = crear_simulacion(θ1 = x, θ2 = x)
+        println("Ejecutando simulación θ1 = θ2 = $(θ₀)")
+
+
+    end
 end
