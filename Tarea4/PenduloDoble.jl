@@ -221,7 +221,7 @@ function calculate_lyapunov(sim::Simulation, steps::Integer)
             porc_previo = porc_act
         end
     end
-    print("Porcentaje actual: $(round(100.0, digits = 1)) -- Media actual: $(suma / steps) \t\t\r")
+    println("Porcentaje actual: $(round(100.0, digits = 1)) -- Media actual: $(suma / steps) \t\t")
     push!(lyap_vs_time, Point2f(trayA.time, suma / steps))
     return lyap_vs_time
 end
@@ -231,7 +231,18 @@ function batches_lyapunov()
         x = deg2rad(θ₀)
         sim = crear_simulacion(θ1 = x, θ2 = x)
         println("Ejecutando simulación θ1 = θ2 = $(θ₀)")
-
-
+        a = calculate_lyapunov(sim, 1_000 * 100_000)
+        filename = "Tarea4/outputPD/truelyap/same_angle/$(θ₀).out"
+        serialize(filename, a)
+        println(prod(["-" for _ in 1:100]))
+    end
+    for θ₀ in 5:5:175
+        x = deg2rad(θ₀)
+        sim = crear_simulacion(θ1 = 0, θ2 = x)
+        println("Ejecutando simulación θ1 = 0, θ2 = $(θ₀)")
+        a = calculate_lyapunov(sim, 1_000 * 100_000)
+        filename = "Tarea4/outputPD/truelyap/theta1=0/$(θ₀).out"
+        serialize(filename, a)
+        println(prod(["-" for _ in 1:100]))
     end
 end
