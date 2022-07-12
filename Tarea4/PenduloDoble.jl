@@ -307,3 +307,14 @@ function batch_frecuencias_θ1__0()
     return freq_vs_ang
 end
 
+
+#Creamos carpetas necesarias si no existen
+mkpath("Tarea4/outputPD")
+mkpath("Tarea4/outputPD/frecuencias")
+mkpath("Tarea4/outputPD/poincare")
+mkpath("Tarea4/outputPD/lyapunov")
+mkpath("Tarea4/outputPD/truelyap")
+mkpath("Tarea4/outputPD/posiciones")
+mkpath("Tarea4/analisis_error")
+
+
