@@ -27,9 +27,14 @@ function animar_simulacion(sim::Simulation ,filename::String = "out.mp4"; length
 
     @show sim.fps
     @show video[end].time
+    porc_previo = 0.0
     record(fig, filename, eachindex(video), framerate = Int64(sim.fps)) do i
         current_frame = video[i]
-        print(" Tiempo del frame actual: $(round(current_frame.time, digits = 2))\r")
+        porc_act = current_frame.time / video[end].time * 100
+        if porc_act - porc_previo > 0.2
+            print("Porcentaje actual: $(round(porc_act, digits = 2))\t\r")
+            porc_previo = porc_act
+        end
         r1[], r2[] = r1r2_de_polares(current_frame, sim.parameters)
     end
     println()
@@ -88,7 +93,7 @@ function plt_poincare(batch::Vector{Simulation}, duration::Union{Integer,Nothing
     ax = Axis(fig[1, 1], 
             xticks = MultiplesTicks(4, π, "π"), 
             yticks = MultiplesTicks(4, π, "π"),
-            ylabel = L"$p_2$[kg m²/s]",
+            ylabel = L"$p_2$[º]",
             xlabel = L"$θ_2$[rad]",
             aspect = 1.0)
 
@@ -109,7 +114,7 @@ function plt_poincare(batch::Vector{Simulation}, duration::Union{Integer,Nothing
             end
             signo_anterior = Int64(sign(v[1]))
         end
-        label = L"θ_1(0) = %$(round(digits = 2,rad2deg(sim.video[1].y[2])))°,  θ_2(0) = %$(round(digits = 2,rad2deg(sim.video[1].y[1])))°"
+        label = L"θ_1(0) = %$(round(digits = 2,rad2deg(sim.video[1].y[1])))°,  θ_2(0) = %$(round(digits = 2,rad2deg(sim.video[1].y[2])))°"
         scatter!(ax, dots, markersize = 4, label = label)
     end
     Legend(fig[1, 2], ax, fontsize = 20)
@@ -327,7 +332,7 @@ function plt_ph_ang1(sim::Simulation, rang::Union{UnitRange, Nothing} = nothing)
     fig = Figure()
     ax = Axis(fig[1, 1], 
                 xlabel = L"$θ_1$[rad]",
-                ylabel = L"$\frac{dθ_1}{dt}$[kg m² /s]",
+                ylabel = L"$\frac{dθ_1}{dt}$[rad /s]",
                 xticks = MultiplesTicks(4, π, "π"),
                 title = L"θ_1(0) = %$(round(digits = 2,rad2deg(sim.video[1].y[1])))°, θ_2(0) = %$(round(digits = 2,rad2deg(sim.video[1].y[2])))°")
 
@@ -364,4 +369,57 @@ function plt_ph_ang2(sim::Simulation, rang::Union{UnitRange, Nothing} = nothing)
     end
     lines!(ax, pos)
     fig
+end
+
+function plt_freq_vs_angulo(data::Vector{Tuple{Float64, Vector{Float64}}})
+    fig = Figure()
+    ax = Axis(fig[1, 1],
+                ylabel = L"$p_2$ [kg m²/s]",
+                xlabel = L"$θ_2(0)$ [°]",
+                yticks = MultiplesTicks(4, π, "π"))
+    for serie in data
+        x = [serie[1] for _ in eachindex(serie[2])]
+        scatter!(ax, x, serie[2], color = :blue, markersize = 1)
+    end
+    #ylims!(ax, (0, 10))
+    fig
+end
+
+function plt_lyapunov()
+    directorio = "Tarea4/outputPD/truelyap/same_angle/"
+    serie = Point2f[]
+    for filename in readdir(directorio)
+        datos = deserialize(directorio*filename)
+        θ = parse(Float64, split(filename, '.')[1])
+        @show Point2f(θ, datos[end][2])
+        push!(serie, Point2f(θ, datos[end][2]))
+    end
+    sort!(serie, by = (v) -> v[1])
+
+    @show serie
+    fig = Figure()
+    ax = Axis(fig[1, 1],
+                xlabel = L"$θ_2(0)$ [°]",
+                ylabel = L"λ")
+
+    lines!(ax, serie, color = :red)
+    fig
+end
+
+function plt_lyap_test(indices::Vector{T}) where T <: Integer
+    directorio = "Tarea4/outputPD/truelyap/theta1=0/"
+    fig = Figure()
+    ax = Axis(fig[1, 1],
+        ylabel = L"λ",
+        xlabel = L"$t$[s]")
+
+    for θ in indices
+        filename = directorio * string(θ) * ".out"
+        println("Abriendo archivo \"$(filename)\"")
+        serie = deserialize(filename)
+        lines!(ax, serie, label = L"θ_2(0) = %$(θ)°")
+    end
+    axislegend(ax)
+    fig
+
 end

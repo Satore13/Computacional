@@ -160,6 +160,7 @@ end
 function wrap_angles!(frame::Frame, p::Dict{Symbol, Float64})
     frame.y[1] = mod2pi.(frame.y[1] .+ π) .- π
     frame.y[2] = mod2pi.(frame.y[2] .+ π) .- π
+    return frame
 end
 
 
@@ -231,18 +232,78 @@ function batches_lyapunov()
         x = deg2rad(θ₀)
         sim = crear_simulacion(θ1 = x, θ2 = x)
         println("Ejecutando simulación θ1 = θ2 = $(θ₀)")
-        a = calculate_lyapunov(sim, 1_000 * 100_000)
+        a = calculate_lyapunov(sim, 1_000 * 100)
         filename = "Tarea4/outputPD/truelyap/same_angle/$(θ₀).out"
         serialize(filename, a)
         println(prod(["-" for _ in 1:100]))
-    end
-    for θ₀ in 5:5:175
-        x = deg2rad(θ₀)
-        sim = crear_simulacion(θ1 = 0, θ2 = x)
+        sim = crear_simulacion(θ1 = 0.0, θ2 = x)
         println("Ejecutando simulación θ1 = 0, θ2 = $(θ₀)")
-        a = calculate_lyapunov(sim, 1_000 * 100_000)
+        a = calculate_lyapunov(sim, 1_000 * 100)
         filename = "Tarea4/outputPD/truelyap/theta1=0/$(θ₀).out"
         serialize(filename, a)
         println(prod(["-" for _ in 1:100]))
     end
 end
+
+function calculate_frecuencias(sim::Simulation, steps::Integer)
+    tray = sim.video[1]
+    frecuencias = Tuple{Float64, Float64}[]
+    signo_ant1 = 1
+    signo_ant2 = 1
+
+    tiempo_ant = 0.0
+    porc_previo = 0.0
+    @show sim.h
+    for i in 1:steps
+        tray = stepFrame(tray, sim.dyn, sim.h, sim.parameters)
+        wrap_angles!(tray, sim.parameters)
+        w = angles_velocity(tray, sim.parameters)[2]
+        p2 = tray.y[4]
+        θ1 = tray.y[1]
+        θ2 = tray.y[2]
+        if signo_ant1 != sign(θ1)  #signo_ant2 != sign(θ2)
+            push!(frecuencias, (abs(θ2), p2))#1/(2 * (tray.time - tiempo_ant)))
+            signo_ant1 = sign(θ1)
+        end
+        porc_act = i / steps * 100
+        if porc_act - porc_previo >= 5
+            print("Porcentaje actual: $(round(porc_act, digits = 1)) -- Encontradas $(length(frecuencias)) frecuencias \t\t\r")
+            porc_previo = porc_act
+        end
+    end
+    sort!(frecuencias, by = (v) -> v[1])
+    if length(frecuencias) < 20
+        return getindex.(frecuencias, 2)
+    end
+    frecuencias = frecuencias[1:20]
+    return getindex.(frecuencias, 2)
+end
+
+function batch_frecuencias_same_angle()
+    freq_vs_ang = Tuple{Float64, Vector{Float64}}[]
+    for θ₀ in 1:0.1:180
+        x = deg2rad(θ₀)
+        println("Frecuencias calculandose para θ₀ = $θ₀")
+        ω = calculate_frecuencias(crear_simulacion(θ1 = x, θ2 = x, h = 1e-3), 100_000)
+        println()
+        println("Frecuencias calculada para θ₀ = $θ₀")
+        push!(freq_vs_ang, (float(θ₀), ω))
+    end
+    serialize("Tarea4/outputPD/frecuencias/simetricas.out", freq_vs_ang)
+    return freq_vs_ang
+end
+
+function batch_frecuencias_θ1__0()
+    freq_vs_ang = Tuple{Float64, Vector{Float64}}[]
+    for θ₀ in 1:0.1:180
+        x = deg2rad(θ₀)
+        println("Frecuencias calculandose para θ₀ = $θ₀")
+        ω = calculate_frecuencias(crear_simulacion(θ1 = 0.0, θ2 = x, h = 1e-3), 100_000)
+        println()
+        println("Frecuencias calculada para θ₀ = $θ₀")
+        push!(freq_vs_ang, (float(θ₀), ω))
+    end
+    serialize("Tarea4/outputPD/frecuencias/simetricas.out", freq_vs_ang)
+    return freq_vs_ang
+end
+
