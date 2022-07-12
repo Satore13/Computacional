@@ -423,3 +423,4 @@ function plt_lyap_test(indices::Vector{T}) where T <: Integer
     fig
 
 end
+mkpath("Tarea4/videoPD")
