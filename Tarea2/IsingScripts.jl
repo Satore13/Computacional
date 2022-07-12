@@ -1,5 +1,5 @@
 include("ModeloIsing.jl")
-using GLMakie
+using CairoMakie
 using Serialization
 using LsqFit
 using Measurements
@@ -23,7 +23,7 @@ function plotear_EyMvspMC(datos::Vector{Vector{Red}}, colors::Vector{Symbol}; gc
         yM = [abs(magnetizacion_norm(red)) for red in d]
         push!(plts_energia, lines!(ax_E, x, yE, color = c))
         push!(plts_magnetizacion, lines!(ax_M, x, yM, color = c))
-        push!(labels, "T = $T, N = $N")
+        push!(labels, "T = $T, L = $N")
     end
     ylims!(ax_M, (0 , 1))
     ylims!(ax_E, (-2, 0))
@@ -83,7 +83,7 @@ end
 function plotear_MvsT!(ax::Axis, label, data::Vector{Tuple{Float64, Float64, Float64}})
     x = getindex.(data, 1)
     yM = getindex.(data, 3)
-    scatter!(ax, x,  yM, label = label, color = :black, markersize = 5)
+    scatter!(ax, x,  yM, label = label)
 end
 
 function procesar_EyMvsT(n)
@@ -110,19 +110,19 @@ function plotear_EvsTvsn()
     xlims!(ax, (0, 5))
 
     for n in N
-        plotear_EvsT!(ax, "N = $n" , deserialize("Tarea2/output/$(n)E_MvsT.out"))
+        plotear_EvsT!(ax, "L = $n" , deserialize("Tarea2/output/$(n)E_MvsT.out"))
     end
     axislegend(ax, position = :rb)
     return fig
 end
 function plotear_MvsTvsn()
-    N = [128]
+    N = [16, 32, 64, 128]
     fig = Figure()
     ax = Axis(fig[1, 1])
     ylims!(ax, (-0.2, 1.2))
-    xlims!(ax, (1, 4))
+    xlims!(ax, (0, 5))
     for n in N
-        plotear_MvsT!(ax, "N = $n" , deserialize("Tarea2/output/n$(n)EyMvsT.out"))
+        plotear_MvsT!(ax, "L = $n" , deserialize("Tarea2/output/$(n)E_MvsT.out"))
     end
     axislegend(ax, position = :rt)
     return fig
